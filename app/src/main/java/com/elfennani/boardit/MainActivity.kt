@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.elfennani.boardit.presentation.Navigation
-import com.elfennani.boardit.presentation.homescreen.HomeScreen
 import com.elfennani.boardit.ui.theme.BoarditTheme
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jan.supabase.SupabaseClient

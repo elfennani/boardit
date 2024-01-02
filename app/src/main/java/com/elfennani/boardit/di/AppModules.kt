@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.elfennani.boardit.R
 import com.elfennani.boardit.data.usecases.AddFolderUseCase
 import com.elfennani.boardit.data.usecases.GetFoldersUseCase
+import com.elfennani.boardit.data.usecases.LoadCategoriesUseCase
 import com.elfennani.boardit.domain.dao.FolderDao
 import dagger.Module
 import dagger.Provides
@@ -25,14 +26,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 class AppModules {
-    @Provides
-    fun provideGetFoldersUseCase(folderDao: FolderDao): GetFoldersUseCase {
-        return GetFoldersUseCase(folderDao)
-    }
 
     @Provides
-    fun provideAddFolderUseCase(folderDao: FolderDao): AddFolderUseCase {
-        return AddFolderUseCase(folderDao)
+    @Singleton
+    fun provideLoadCategoriesUseCase(supabaseClient: SupabaseClient):LoadCategoriesUseCase{
+        return  LoadCategoriesUseCase(supabaseClient)
     }
 
     @Provides
