@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.elfennani.boardit.domain.dao.FolderDao
-import com.elfennani.boardit.domain.entities.Folder
+import com.elfennani.boardit.data.local.dao.CategoryDao
+import com.elfennani.boardit.data.local.entities.CategoryEntity
 
-@Database(entities = [Folder::class], version = 1)
+@Database(entities = [CategoryEntity::class], version = 1)
 abstract class AppDatabase: RoomDatabase() {
-    abstract fun folderDao(): FolderDao
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         @Volatile

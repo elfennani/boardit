@@ -13,7 +13,7 @@ plugins {
 android {
     signingConfigs {
         getByName("debug") {
-            storeFile = file("/home/elfennani/keystores/readit.jks")
+            storeFile = file("/home/elfennani/keystores/main_key.jks")
             storePassword = "nizar2002"
             keyAlias = "elfennani"
             keyPassword = "nizar2002"
@@ -47,7 +47,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
