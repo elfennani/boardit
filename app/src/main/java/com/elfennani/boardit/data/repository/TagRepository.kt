@@ -1,54 +1,112 @@
 package com.elfennani.boardit.data.repository
 
-import android.util.Log
-import com.elfennani.boardit.data.local.dao.CategoryDao
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.elfennani.boardit.data.local.dao.TagDao
-import com.elfennani.boardit.data.local.entities.CategoryEntity
 import com.elfennani.boardit.data.local.entities.TagEntity
 import com.elfennani.boardit.data.local.entities.asExternalModel
-import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
-import com.elfennani.boardit.data.remote.models.CategoryDto
-import com.elfennani.boardit.data.remote.models.TagDto
+import com.elfennani.boardit.data.remote.models.NetworkCategory
+import com.elfennani.boardit.data.remote.models.NetworkTag
 import com.elfennani.boardit.data.remote.models.asEntity
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
+
+@Serializable
+private data class TagInsert(
+    val label: String,
+    val color: String,
+    @SerialName("user_id") val userId: String
+)
+
 
 interface TagRepository {
     val tags: Flow<List<Tag>>
+    val tableName: String
+        get() = "tag"
 
     suspend fun synchronize()
+    suspend fun add(label: String, color: Color)
+    suspend fun edit(tag: Tag)
+    suspend fun delete(tag: Tag)
 }
 
 class TagRepositoryImpl @Inject constructor(
     private val tagDao: TagDao,
     private val supabaseClient: SupabaseClient
-) : TagRepository{
+) : TagRepository {
     override val tags: Flow<List<Tag>>
         get() = tagDao.getAll().map { it.map(TagEntity::asExternalModel) }
 
     override suspend fun synchronize() {
         val currentUser = supabaseClient.auth.currentUserOrNull() ?: return
-        val networkCategories: List<TagDto> = supabaseClient.from("tag")
-            .select{
+        val networkTags: List<NetworkTag> = supabaseClient.from(tableName)
+            .select {
                 filter {
-                    TagDto::userId eq currentUser.id
+                    NetworkTag::userId eq currentUser.id
                 }
             }.decodeList()
 
-        Log.d("TAGS", networkCategories.toString())
+        tagDao.deleteNotExisting(networkTags.map { it.id })
+        tagDao.upsertBatchTag(
+            networkTags
+                .map(NetworkTag::asEntity)
+        )
+    }
 
-        networkCategories
-            .map(TagDto::asEntity)
-            .forEach {
-                tagDao.upsertTag(it)
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun Color.toHex() = this.toArgb()
+        .toHexString(HexFormat.UpperCase)
+        .replaceFirst("FF", "#")
+
+    override suspend fun add(label: String, color: Color) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .insert(
+                TagInsert(
+                    label,
+                    color.toHex(),
+                    currentUser.id
+                )
+            )
+        synchronize()
+    }
+
+    override suspend fun edit(tag: Tag) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .update({
+                NetworkTag::label setTo tag.label
+                NetworkTag::color setTo tag.color.toHex()
+            }) {
+                filter {
+                    NetworkTag::id eq tag.id
+                    NetworkTag::userId eq currentUser.id
+                }
             }
+
+        synchronize()
+    }
+
+    override suspend fun delete(tag: Tag) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .delete {
+                filter {
+                    NetworkTag::id eq tag.id
+                    NetworkTag::userId eq currentUser.id
+                }
+            }
+
+        synchronize()
     }
 }

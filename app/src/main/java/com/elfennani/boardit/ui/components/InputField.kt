@@ -55,7 +55,7 @@ fun InputField(
         BasicTextField(
             value = value,
             onValueChange = onValueChanged,
-            textStyle = MaterialTheme.typography.bodyMedium,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
             singleLine = true,
             keyboardOptions = keyboardOptions,
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None

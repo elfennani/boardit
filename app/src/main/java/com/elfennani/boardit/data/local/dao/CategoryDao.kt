@@ -15,6 +15,10 @@ interface CategoryDao {
         fun getCategoryById(id: String) : Flow<CategoryEntity>
         @Upsert
         suspend fun upsertCategory(categoryEntity: CategoryEntity)
+        @Upsert
+        suspend fun upsertBatchCategory(categoryEntities: List<CategoryEntity>)
+        @Query("DELETE FROM category WHERE category.id NOT IN (:ids)")
+        suspend fun deleteNotExist(ids: List<Int>)
         @Delete
         suspend fun deleteCategory(categoryEntity: CategoryEntity)
 }

@@ -4,44 +4,92 @@ import com.elfennani.boardit.data.local.dao.CategoryDao
 import com.elfennani.boardit.data.local.entities.CategoryEntity
 import com.elfennani.boardit.data.local.entities.asExternalModel
 import com.elfennani.boardit.data.models.Category
-import com.elfennani.boardit.data.remote.models.CategoryDto
+import com.elfennani.boardit.data.remote.models.NetworkCategory
 import com.elfennani.boardit.data.remote.models.asEntity
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
+
+@Serializable
+private data class CategoryInsert(
+    val label: String,
+    @SerialName("user_id") val userId: String
+)
 
 interface CategoryRepository {
     val categories: Flow<List<Category>>
+    val tableName: String
+        get() = "category"
 
     suspend fun synchronize()
+    suspend fun add(label: String)
+    suspend fun edit(category: Category)
+    suspend fun delete(category: Category)
 }
 
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
     private val supabaseClient: SupabaseClient
-) : CategoryRepository{
+) : CategoryRepository {
     override val categories: Flow<List<Category>>
         get() = categoryDao.getAll().map { it.map(CategoryEntity::asExternalModel) }
 
     override suspend fun synchronize() {
         val currentUser = supabaseClient.auth.currentUserOrNull() ?: return
-        val networkCategories: List<CategoryDto> = supabaseClient.from("category")
-            .select{
+        val networkCategories: List<NetworkCategory> = supabaseClient.from(tableName)
+            .select {
                 filter {
-                    CategoryDto::userId eq currentUser.id
+                    NetworkCategory::userId eq currentUser.id
                 }
             }.decodeList()
 
-        networkCategories
-            .map(CategoryDto::asEntity)
-            .forEach {
-                categoryDao.upsertCategory(it)
+        categoryDao.deleteNotExist(networkCategories.map { it.id })
+        categoryDao.upsertBatchCategory(
+            networkCategories
+                .map(NetworkCategory::asEntity)
+        )
+    }
+
+    override suspend fun add(label: String) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .insert(CategoryInsert(label, currentUser.id))
+        synchronize()
+    }
+
+    override suspend fun edit(category: Category) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .update({
+                NetworkCategory::label setTo category.label
+            }) {
+                filter {
+                    NetworkCategory::id eq category.id
+                    NetworkCategory::userId eq currentUser.id
+                }
             }
+
+        synchronize()
+    }
+
+    override suspend fun delete(category: Category) {
+        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
+        supabaseClient
+            .from(tableName)
+            .delete {
+                filter {
+                    NetworkCategory::id eq category.id
+                    NetworkCategory::userId eq currentUser.id
+                }
+            }
+
+        synchronize()
     }
 }

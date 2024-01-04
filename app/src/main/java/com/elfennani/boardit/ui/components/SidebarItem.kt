@@ -60,7 +60,7 @@ fun SidebarItem(
         Modifier
             .clip(RoundedCornerShape(4.dp))
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .height(IntrinsicSize.Min)
             .clickable(onClick = { onClick?.invoke() }, enabled = onClick != null),
         verticalAlignment = Alignment.CenterVertically

@@ -1,17 +1,10 @@
 package com.elfennani.boardit.ui.screens.manage
 
-import android.util.Log
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.FolderCopy
 import androidx.compose.material.icons.rounded.Tag
@@ -26,8 +19,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,16 +30,41 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.components.IndentationType
 import com.elfennani.boardit.ui.components.SidebarItem
 import com.elfennani.boardit.ui.components.DashedDivider
+import com.elfennani.boardit.ui.screens.manage.components.AddButton
+import com.elfennani.boardit.ui.screens.manage.components.AddCategoryBottomSheet
+import com.elfennani.boardit.ui.screens.manage.components.AddTagBottomSheet
+import com.elfennani.boardit.ui.screens.manage.components.EditCategoryBottomSheet
+import com.elfennani.boardit.ui.screens.manage.components.EditTagBottomSheet
+
+sealed class ModalState() {
+    data object Closed : ModalState()
+    data object AddCategory : ModalState()
+    data object AddTag : ModalState()
+    data class EditCategory(val category: Category) : ModalState()
+    data class EditTag(val tag: Tag) : ModalState()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
     state: ManageScreenState,
-    onBack: () -> Unit
+    onAddCategory: (label: String) -> Unit,
+    onEditCategory: (Category) -> Unit,
+    onDeleteCategory: (Category) -> Unit,
+    onAddTag: (String, Color) -> Unit,
+    onEditTag: (Tag) -> Unit,
+    onDeleteTag: (Tag) -> Unit,
+    onBack: () -> Unit,
 ) {
+    var modalState: ModalState by remember {
+        mutableStateOf(ModalState.Closed)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,12 +97,15 @@ fun ManageScreen(
                 label = "Categories",
                 onClick = null,
                 icon = Icons.Rounded.FolderCopy,
-                leading = { AddButton {} })
+                leading = { AddButton { modalState = ModalState.AddCategory } })
 
             state.categories?.forEachIndexed { index, category ->
                 SidebarItem(
                     label = category.label,
                     indentationType = if (index == state.categories.size - 1) IndentationType.End else IndentationType.Middle,
+                    onClick = {
+                        modalState = ModalState.EditCategory(category)
+                    }
                 )
             }
 
@@ -94,33 +117,55 @@ fun ManageScreen(
                 label = "Tags",
                 onClick = null,
                 icon = Icons.Rounded.Tag,
-                leading = { AddButton {} })
+                leading = { AddButton { modalState = ModalState.AddTag } })
             state.tags?.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,
                     color = tag.color,
-                    indentationType = if (index == state.tags.size - 1) IndentationType.End else IndentationType.Middle
+                    indentationType = if (index == state.tags.size - 1) IndentationType.End else IndentationType.Middle,
+                    onClick = { modalState = ModalState.EditTag(tag) }
                 )
             }
-        }
-    }
-}
 
-@Composable
-fun AddButton(onAdd: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(400.dp))
-            .clickable { onAdd() }
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(400.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Add,
-            contentDescription = null,
-            Modifier.size(14.dp)
-        )
-        Text(text = "Add", style = MaterialTheme.typography.labelSmall)
+            when (modalState) {
+                is ModalState.AddCategory -> AddCategoryBottomSheet(
+                    onClose = {
+                        modalState = ModalState.Closed
+                    },
+                    onConfirm = onAddCategory
+                )
+
+                is ModalState.EditCategory -> {
+                    val category = (modalState as ModalState.EditCategory).category
+                    EditCategoryBottomSheet(
+                        category,
+                        onClose = {
+                            modalState = ModalState.Closed
+                        },
+                        onConfirm = onEditCategory,
+                        onDelete = onDeleteCategory
+                    )
+                }
+
+                is ModalState.AddTag -> AddTagBottomSheet(onClose = {
+                    modalState = ModalState.Closed
+                }, onConfirm = onAddTag)
+
+                is ModalState.EditTag -> {
+                    val tag = (modalState as ModalState.EditTag).tag
+                    EditTagBottomSheet(
+                        tag,
+                        onClose = {
+                            modalState = ModalState.Closed
+                        },
+                        onConfirm = onEditTag,
+                        onDelete = onDeleteTag
+                    )
+                }
+
+                else -> {}
+            }
+        }
     }
 }
 
@@ -132,6 +177,12 @@ fun NavGraphBuilder.manageScreen(navController: NavController) {
 
         ManageScreen(
             state,
+            onAddCategory = viewModel::addCategory,
+            onEditCategory = viewModel::editCategory,
+            onDeleteCategory = viewModel::deleteCategory,
+            onAddTag = viewModel::addTag,
+            onEditTag = viewModel::editTag,
+            onDeleteTag = viewModel::deleteTag,
             onBack = {
                 navController.popBackStack()
             }

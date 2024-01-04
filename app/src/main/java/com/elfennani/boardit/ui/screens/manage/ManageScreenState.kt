@@ -7,5 +7,5 @@ data class ManageScreenState(
     val isLoadingCategories: Boolean,
     val categories: List<Category>?,
     val isLoadingTags: Boolean,
-    val tags: List<Tag>?
+    val tags: List<Tag>?,
 )

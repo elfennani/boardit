@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class TagDto (
+data class NetworkTag (
     val id: Int,
     val label: String,
     val color: String?,
@@ -13,4 +13,4 @@ data class TagDto (
     @SerialName("created_at") val createdAt: String
 )
 
-fun TagDto.asEntity() = TagEntity(id, label, userId, color)
+fun NetworkTag.asEntity() = TagEntity(id, label, userId, color)
