@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.data.remote.models.TagDto
 import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.components.IndentationType
@@ -36,7 +37,7 @@ import com.elfennani.boardit.ui.components.SidebarItem
 @Composable
 fun Sidebar(
     categories: List<Category>,
-    tagDtos: List<TagDto>,
+    tags: List<Tag>,
     onNavigateToManage: () -> Unit
 ) {
     ModalDrawerSheet(
@@ -72,11 +73,11 @@ fun Sidebar(
             SidebarItem(label = "Tags", icon = Icons.Rounded.Tag, leading = {
                 Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = null)
             })
-            tagDtos.forEachIndexed { index, tag ->
+            tags.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,
-                    color = Color.Gray,
-                    indentationType = if(index == tagDtos.size - 1) IndentationType.End else IndentationType.Middle
+                    color = tag.color,
+                    indentationType = if(index == tags.size - 1) IndentationType.End else IndentationType.Middle
                 )
             }
 

@@ -5,11 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.elfennani.boardit.data.local.dao.CategoryDao
+import com.elfennani.boardit.data.local.dao.TagDao
 import com.elfennani.boardit.data.local.entities.CategoryEntity
+import com.elfennani.boardit.data.local.entities.TagEntity
 
-@Database(entities = [CategoryEntity::class], version = 1)
+@Database(entities = [CategoryEntity::class, TagEntity::class], version = 1)
 abstract class AppDatabase: RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
+    abstract fun tagDao(): TagDao
 
     companion object {
         @Volatile

@@ -1,11 +1,11 @@
 package com.elfennani.boardit.ui.screens.manage
 
-import com.elfennani.boardit.data.remote.models.CategoryDto
-import com.elfennani.boardit.data.remote.models.TagDto
+import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.data.models.Tag
 
 data class ManageScreenState(
     val isLoadingCategories: Boolean,
-    val categories: List<CategoryDto>?,
+    val categories: List<Category>?,
     val isLoadingTags: Boolean,
-    val tagDtos: List<TagDto>?
+    val tags: List<Tag>?
 )

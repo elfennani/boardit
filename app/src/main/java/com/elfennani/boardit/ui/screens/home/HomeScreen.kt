@@ -54,7 +54,7 @@ fun HomeScreen(
         drawerContent = {
             Sidebar(
                 categories = state.categories ?: emptyList(),
-                tagDtos = state.tagDtos ?: emptyList(),
+                tags = state.tags ?: emptyList(),
                 onNavigateToManage = onNavigateToManage
             )
         }) {

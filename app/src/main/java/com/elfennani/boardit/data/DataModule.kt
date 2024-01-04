@@ -2,6 +2,8 @@ package com.elfennani.boardit.data
 
 import com.elfennani.boardit.data.repository.CategoryRepository
 import com.elfennani.boardit.data.repository.CategoryRepositoryImpl
+import com.elfennani.boardit.data.repository.TagRepository
+import com.elfennani.boardit.data.repository.TagRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -16,4 +18,10 @@ interface DataModule {
     fun bindMyCategoryRepository(
         categoryRepository: CategoryRepositoryImpl
     ) : CategoryRepository
+
+    @Singleton
+    @Binds
+    fun bindMyTagRepository(
+        tagRepository: TagRepositoryImpl
+    ) : TagRepository
 }

@@ -1,5 +1,6 @@
 package com.elfennani.boardit.ui.screens.manage
 
+import android.util.Log
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +67,7 @@ fun ManageScreen(
             )
         }
     ) { innerPadding ->
+
         Column(
             Modifier
                 .padding(innerPadding)
@@ -92,11 +95,11 @@ fun ManageScreen(
                 onClick = null,
                 icon = Icons.Rounded.Tag,
                 leading = { AddButton {} })
-            state.tagDtos?.forEachIndexed { index, tag ->
+            state.tags?.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,
-                    color = Color.Gray,
-                    indentationType = if (index == state.tagDtos.size - 1) IndentationType.End else IndentationType.Middle
+                    color = tag.color,
+                    indentationType = if (index == state.tags.size - 1) IndentationType.End else IndentationType.Middle
                 )
             }
         }
@@ -125,7 +128,7 @@ const val ManageScreenPattern = "boards/manage";
 fun NavGraphBuilder.manageScreen(navController: NavController) {
     composable(ManageScreenPattern) {
         val viewModel: ManageViewModel = hiltViewModel()
-        val state by viewModel.manageScreenState
+        val state by viewModel.manageScreenState.collectAsState()
 
         ManageScreen(
             state,
