@@ -25,17 +25,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.theme.BoarditTheme
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @Composable
 fun BoardItem(
-    board: Board
+    board: Board,
+    onClick: (Board) -> Unit = {}
 ) {
     val tags = listOf<Tag>(
         Tag(0, "Textures", Color(0xFFEF4444)),
@@ -48,24 +53,36 @@ fun BoardItem(
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .fillMaxWidth()
-            .clickable {  }
+            .clickable { onClick(board) }
             .padding(12.dp)
             .height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color.LightGray),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Image,
+        if (board.attachments.isNotEmpty()) {
+            AsyncImage(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.LightGray),
+                model = board.attachments[0].url,
                 contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(32.dp)
+                contentScale = ContentScale.Crop
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Image,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
         Column(
             verticalArrangement = Arrangement.SpaceBetween,
@@ -79,7 +96,7 @@ fun BoardItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "May 5, 2023 at 6:45 PM",
+                    text = SimpleDateFormat("MMM d, yyyy 'at' hh:mm a").format(board.date),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
@@ -119,6 +136,7 @@ fun BoardPreview() {
                     id = 0,
                     title = "Hello World",
                     category = Category(0, "Haha"),
+                    date = Date(),
                     note = null
                 )
             )

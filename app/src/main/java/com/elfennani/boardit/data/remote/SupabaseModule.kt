@@ -14,6 +14,8 @@ import io.github.jan.supabase.compose.auth.googleNativeLogin
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.storage
 import javax.inject.Singleton
 
 @Module
@@ -34,9 +36,14 @@ class SupabaseModule {
         ) {
             install(Auth)
             install(Postgrest)
-            install(ComposeAuth){
+            install(Storage)
+            install(ComposeAuth) {
                 googleNativeLogin(SUPABASE_SERVER_CLIENT_ID)
             }
         }
     }
+
+    @Provides
+    @Singleton
+    fun provideSupabaseBucket(supabaseClient: SupabaseClient) = supabaseClient.storage.from("main")
 }

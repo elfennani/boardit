@@ -4,6 +4,10 @@ import androidx.room.Embedded
 import androidx.room.Junction
 import androidx.room.Relation
 import com.elfennani.boardit.data.models.Board
+import java.text.SimpleDateFormat
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Date
 
 data class BoardWithInfo(
     @Embedded val board: BoardEntity,
@@ -12,6 +16,12 @@ data class BoardWithInfo(
         entityColumn = "id"
     )
     val category: CategoryEntity,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "boardId"
+    )
+    val attachments: List<AttachmentEntity>,
 
     @Relation(
         parentColumn = "id",
@@ -26,5 +36,7 @@ fun BoardWithInfo.asExternalModel() = Board(
     title = board.title,
     note = board.note,
     category = category.asExternalModel(),
-    tags = tags.map(TagEntity::asExternalModel)
+    date = Date.from(OffsetDateTime.parse(board.createdAt, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant()),
+    tags = tags.map(TagEntity::asExternalModel),
+    attachments = attachments.map(AttachmentEntity::asExternalModel)
 )

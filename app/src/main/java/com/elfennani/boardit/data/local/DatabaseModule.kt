@@ -40,4 +40,9 @@ class DatabaseModule {
     @Provides
     fun provideBoardTagsDao(database: AppDatabase) =
         database.boardTagsDao()
+
+    @Singleton
+    @Provides
+    fun provideAttachmentDao(database: AppDatabase) =
+        database.attachmentDao()
 }

@@ -44,7 +44,6 @@ android {
         resValue("string", "SUPABASE_URL", properties.getProperty("SUPABASE_URL"))
     }
 
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -57,11 +56,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = JavaVersion.VERSION_11.toString()
     }
     buildFeatures {
         compose = true
@@ -80,6 +79,10 @@ android {
 
 dependencies {
 
+    // Coil
+    implementation("io.coil-kt:coil:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Supabase
     val supabaseVersion = "2.0.1"
     val ktorVersion = "2.3.7"
@@ -88,6 +91,7 @@ dependencies {
     implementation("io.ktor:ktor-client-android:$ktorVersion")
     implementation("io.github.jan-tennert.supabase:compose-auth:$supabaseVersion")
     implementation("io.github.jan-tennert.supabase:gotrue-kt:$supabaseVersion")
+    implementation("io.github.jan-tennert.supabase:storage-kt:$supabaseVersion")
 
     // Google Fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")

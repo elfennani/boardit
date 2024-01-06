@@ -3,6 +3,7 @@ package com.elfennani.boardit.ui.graphs
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.navigation
+import com.elfennani.boardit.ui.screens.board.boardScreen
 import com.elfennani.boardit.ui.screens.home.HomeScreenPattern
 import com.elfennani.boardit.ui.screens.home.homeScreen
 import com.elfennani.boardit.ui.screens.manage.manageScreen
@@ -20,5 +21,6 @@ fun NavGraphBuilder.boardsGraph(navController: NavController, supabaseClient: Su
         )
 
         manageScreen(navController)
+        boardScreen(navController)
     }
 }
