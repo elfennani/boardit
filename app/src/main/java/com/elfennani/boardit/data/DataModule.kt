@@ -1,5 +1,7 @@
 package com.elfennani.boardit.data
 
+import com.elfennani.boardit.data.repository.BoardRepository
+import com.elfennani.boardit.data.repository.BoardRepositoryImpl
 import com.elfennani.boardit.data.repository.CategoryRepository
 import com.elfennani.boardit.data.repository.CategoryRepositoryImpl
 import com.elfennani.boardit.data.repository.TagRepository
@@ -24,4 +26,10 @@ interface DataModule {
     fun bindMyTagRepository(
         tagRepository: TagRepositoryImpl
     ) : TagRepository
+
+    @Singleton
+    @Binds
+    fun bindBoardRepository(
+        boardRepository: BoardRepositoryImpl
+    ) : BoardRepository
 }

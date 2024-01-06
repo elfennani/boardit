@@ -1,7 +1,9 @@
 package com.elfennani.boardit.data.repository
 
 import com.elfennani.boardit.data.local.dao.CategoryDao
+import com.elfennani.boardit.data.local.dao.SettingDao
 import com.elfennani.boardit.data.local.entities.CategoryEntity
+import com.elfennani.boardit.data.local.entities.SettingEntity
 import com.elfennani.boardit.data.local.entities.asExternalModel
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.remote.models.NetworkCategory
@@ -23,8 +25,12 @@ private data class CategoryInsert(
 
 interface CategoryRepository {
     val categories: Flow<List<Category>>
+    val selectedCategory: Flow<Int?>
+
     val tableName: String
         get() = "category"
+
+    suspend fun setSelectedCategory(category: Category?)
 
     suspend fun synchronize()
     suspend fun add(label: String)
@@ -34,10 +40,32 @@ interface CategoryRepository {
 
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
-    private val supabaseClient: SupabaseClient
+    private val supabaseClient: SupabaseClient,
+    private val settingDao: SettingDao,
 ) : CategoryRepository {
+    private val selectedCategoryKey = "selectedCategory"
+
     override val categories: Flow<List<Category>>
         get() = categoryDao.getAll().map { it.map(CategoryEntity::asExternalModel) }
+
+    override val selectedCategory: Flow<Int?>
+        get() = settingDao
+            .getSettingByKey(selectedCategoryKey)
+            .map { it?.value?.toInt() }
+
+    override suspend fun setSelectedCategory(category: Category?) {
+        if(category == null){
+            settingDao.deleteSettingByKey(selectedCategoryKey)
+            return;
+        }
+
+        settingDao.upsertSetting(
+            SettingEntity(
+                key = selectedCategoryKey,
+                value = category.id.toString()
+            )
+        )
+    }
 
     override suspend fun synchronize() {
         val currentUser = supabaseClient.auth.currentUserOrNull() ?: return

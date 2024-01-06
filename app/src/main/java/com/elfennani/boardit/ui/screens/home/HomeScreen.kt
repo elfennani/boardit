@@ -1,7 +1,11 @@
 package com.elfennani.boardit.ui.screens.home
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,11 +31,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.elfennani.boardit.data.models.Board
+import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.ui.screens.home.components.BoardItem
 import com.elfennani.boardit.ui.screens.home.components.Sidebar
 import com.elfennani.boardit.ui.screens.manage.navigateToManageScreen
 import io.github.jan.supabase.SupabaseClient
@@ -44,18 +52,31 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     state: HomeScreenState,
     onLogOut: () -> Unit,
-    onNavigateToManage: () -> Unit
+    onNavigateToManage: () -> Unit,
+    onSelectCategory: (Category?) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
+    val selectedCategoryLabel = when (state.currentCategory) {
+        is SelectedCategory.All -> "All"
+        is SelectedCategory.Id -> state.categories?.find { it.id == state.currentCategory.id }?.label
+        is SelectedCategory.Loading -> "Loading..."
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             Sidebar(
+                activeCategory = state.currentCategory,
                 categories = state.categories ?: emptyList(),
                 tags = state.tags ?: emptyList(),
-                onNavigateToManage = onNavigateToManage
+                onNavigateToManage = onNavigateToManage,
+                onSelectCategory = {
+                    onSelectCategory(it)
+                    coroutineScope.launch {
+                        drawerState.close()
+                    }
+                }
             )
         }) {
         Scaffold(
@@ -76,7 +97,7 @@ fun HomeScreen(
                     },
                     title = {
                         Text(
-                            text = "Best Inspirations",
+                            text = selectedCategoryLabel ?: "",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium
                         )
@@ -98,19 +119,25 @@ fun HomeScreen(
                 }
             }
         ) {
-            Column(Modifier.padding(it)) {
-                Text(text = state.isLoadingCategories.toString())
-                LazyColumn {
-                    items(state.categories ?: emptyList()) {
-                        Text(text = it.label)
-                    }
-                }
-                Button(onClick = { onLogOut() }) {
-                    Text(text = "Logout")
+            LazyColumn(
+                contentPadding = it + PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.boards ?: emptyList()) { board ->
+                    BoardItem(board = board)
                 }
             }
         }
     }
+}
+
+private operator fun PaddingValues.plus(paddingValues: PaddingValues): PaddingValues {
+    return PaddingValues(
+        start = this.calculateStartPadding(LayoutDirection.Ltr) + paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+        top = this.calculateTopPadding() + paddingValues.calculateTopPadding(),
+        end = this.calculateEndPadding(LayoutDirection.Ltr) + paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+        bottom = this.calculateBottomPadding() + paddingValues.calculateBottomPadding()
+    )
 }
 
 const val HomeScreenPattern = "boards/home"
@@ -123,18 +150,22 @@ fun NavGraphBuilder.homeScreen(supabaseClient: SupabaseClient, navController: Na
 
         HomeScreen(
             state = state,
-            onLogOut = {signOut.startFlow()},
+            onLogOut = { signOut.startFlow() },
             onNavigateToManage = {
                 navController.navigateToManageScreen()
-            }
+            },
+            onSelectCategory = homeViewModel::selectCategory
         )
     }
 }
 
 fun NavController.navigateToHomeScreen(popUpToTop: Boolean = false) {
-    this.navigate(HomeScreenPattern){
-        if(popUpToTop){
-            popUpTo(this@navigateToHomeScreen.currentBackStackEntry?.destination?.route ?: return@navigate){
+    this.navigate(HomeScreenPattern) {
+        if (popUpToTop) {
+            popUpTo(
+                this@navigateToHomeScreen.currentBackStackEntry?.destination?.route
+                    ?: return@navigate
+            ) {
                 inclusive = true
             }
         }

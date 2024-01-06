@@ -31,12 +31,15 @@ import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.components.IndentationType
 import com.elfennani.boardit.ui.components.SidebarItem
+import com.elfennani.boardit.ui.screens.home.SelectedCategory
 
 @Composable
 fun Sidebar(
+    activeCategory: SelectedCategory,
     categories: List<Category>,
     tags: List<Tag>,
-    onNavigateToManage: () -> Unit
+    onNavigateToManage: () -> Unit,
+    onSelectCategory: (Category?) -> Unit
 ) {
     ModalDrawerSheet(
         Modifier.width(266.dp),
@@ -59,10 +62,18 @@ fun Sidebar(
             SidebarItem(label = "Categories", icon = Icons.Rounded.FolderCopy, leading = {
                 Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = null)
             })
+            SidebarItem(
+                label = "All",
+                indentationType = IndentationType.Middle,
+                onClick = { onSelectCategory(null) },
+                active = activeCategory == SelectedCategory.All
+            )
             categories.forEachIndexed { index, category ->
                 SidebarItem(
                     label = category.label,
-                    indentationType = if(index == categories.size - 1) IndentationType.End else IndentationType.Middle,
+                    indentationType = if (index == categories.size - 1) IndentationType.End else IndentationType.Middle,
+                    onClick = { onSelectCategory(category) },
+                    active = activeCategory is SelectedCategory.Id && activeCategory.id == category.id
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -75,7 +86,7 @@ fun Sidebar(
                 SidebarItem(
                     label = tag.label,
                     color = tag.color,
-                    indentationType = if(index == tags.size - 1) IndentationType.End else IndentationType.Middle
+                    indentationType = if (index == tags.size - 1) IndentationType.End else IndentationType.Middle
                 )
             }
 

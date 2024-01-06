@@ -25,4 +25,19 @@ class DatabaseModule {
     @Provides
     fun provideTagDao(database: AppDatabase) =
         database.tagDao()
+
+    @Singleton
+    @Provides
+    fun provideSettingDao(database: AppDatabase) =
+        database.settingDao()
+
+    @Singleton
+    @Provides
+    fun provideBoardDao(database: AppDatabase) =
+        database.boardDao()
+
+    @Singleton
+    @Provides
+    fun provideBoardTagsDao(database: AppDatabase) =
+        database.boardTagsDao()
 }

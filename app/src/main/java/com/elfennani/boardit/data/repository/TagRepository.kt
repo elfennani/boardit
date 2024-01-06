@@ -2,13 +2,16 @@ package com.elfennani.boardit.data.repository
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import com.elfennani.boardit.data.local.dao.BoardTagsDao
 import com.elfennani.boardit.data.local.dao.TagDao
 import com.elfennani.boardit.data.local.entities.TagEntity
 import com.elfennani.boardit.data.local.entities.asExternalModel
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.remote.models.NetworkBoardTags
 import com.elfennani.boardit.data.remote.models.NetworkCategory
 import com.elfennani.boardit.data.remote.models.NetworkTag
 import com.elfennani.boardit.data.remote.models.asEntity
+import com.elfennani.boardit.data.remote.models.combineIds
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
@@ -39,6 +42,7 @@ interface TagRepository {
 
 class TagRepositoryImpl @Inject constructor(
     private val tagDao: TagDao,
+    private val boardTagsDao: BoardTagsDao,
     private val supabaseClient: SupabaseClient
 ) : TagRepository {
     override val tags: Flow<List<Tag>>
@@ -53,11 +57,21 @@ class TagRepositoryImpl @Inject constructor(
                 }
             }.decodeList()
 
+        val boardTagsNetwork: List<NetworkBoardTags> = supabaseClient
+            .from("board_tags")
+            .select {
+                filter {
+                    NetworkTag::userId eq currentUser.id
+                }
+            }.decodeList()
+
         tagDao.deleteNotExisting(networkTags.map { it.id })
         tagDao.upsertBatchTag(
             networkTags
                 .map(NetworkTag::asEntity)
         )
+        boardTagsDao.deleteNotExist(boardTagsNetwork.map(NetworkBoardTags::combineIds))
+        boardTagsDao.upsertBatchBoardTags(boardTagsNetwork.map(NetworkBoardTags::asEntity))
     }
 
     @OptIn(ExperimentalStdlibApi::class)
