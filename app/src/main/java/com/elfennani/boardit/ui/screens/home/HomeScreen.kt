@@ -22,6 +22,7 @@ import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.plus
 import com.elfennani.boardit.ui.screens.board.navigateToBoardScreen
+import com.elfennani.boardit.ui.screens.editor.navigateToEditorScreen
 import com.elfennani.boardit.ui.screens.home.components.BoardItem
 import com.elfennani.boardit.ui.screens.home.components.HomeScaffold
 import com.elfennani.boardit.ui.screens.home.components.Sidebar
@@ -35,6 +36,7 @@ fun HomeScreen(
     state: HomeScreenState,
     onNavigateToManage: () -> Unit,
     onNavigateToBoard: (Board) -> Unit,
+    onNavigateToEditor: () ->Unit,
     onSelectCategory: (Category?) -> Unit,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -64,7 +66,7 @@ fun HomeScreen(
         HomeScaffold(
             title = selectedCategoryLabel ?: "",
             onDrawerOpen = { coroutineScope.launch { drawerState.open() } },
-            onClickAdd = { /*TODO*/ }
+            onClickAdd = onNavigateToEditor
         ) {
             LazyColumn(
                 contentPadding = it + PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -100,6 +102,7 @@ fun NavGraphBuilder.homeScreen(supabaseClient: SupabaseClient, navController: Na
                 navController.navigateToManageScreen()
             },
             onNavigateToBoard = navController::navigateToBoardScreen,
+            onNavigateToEditor = navController::navigateToEditorScreen,
             onSelectCategory = homeViewModel::selectCategory,
         )
     }

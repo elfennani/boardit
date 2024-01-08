@@ -9,6 +9,9 @@ data class NetworkAttachment(
     val id: Int,
     val filename: String,
     val url: String,
+    val mime: String,
+    val width: Int?,
+    val height: Int?,
     @SerialName("user_id") val userId: String,
     @SerialName("board_id") val boardId: Int,
     @SerialName("created_at") val createdAt: String
@@ -19,5 +22,8 @@ fun NetworkAttachment.asEntity() = AttachmentEntity(
     fileName = filename,
     url=url,
     userId = userId,
-    boardId = boardId
+    boardId = boardId,
+    mime = mime,
+    width = width,
+    height = height,
 )

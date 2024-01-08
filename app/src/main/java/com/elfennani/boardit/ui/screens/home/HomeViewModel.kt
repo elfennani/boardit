@@ -73,9 +73,18 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            categoryRepository.synchronize().runCatching { }
-            tagRepository.synchronize().runCatching { }
-            boardRepository.synchronize().runCatching { }
+            try {
+                categoryRepository.synchronize()
+            } catch (_: Exception) {
+            }
+            try {
+                tagRepository.synchronize()
+            } catch (_: Exception) {
+            }
+            try {
+                boardRepository.synchronize()
+            } catch (_: Exception) {
+            }
         }
     }
 }

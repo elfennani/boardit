@@ -1,5 +1,6 @@
 package com.elfennani.boardit.ui.screens.home.components
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,27 +27,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.theme.BoarditTheme
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
+@SuppressLint("SimpleDateFormat")
 @Composable
 fun BoardItem(
     board: Board,
     onClick: (Board) -> Unit = {}
 ) {
-    val tags = listOf<Tag>(
-        Tag(0, "Textures", Color(0xFFEF4444)),
-        Tag(0, "Colors", Color(0xFF22C55E)),
-        Tag(0, "Themes", Color(0xFF8B5CF6))
-    )
+    val context = LocalContext.current
 
     Row(
         Modifier
@@ -63,8 +64,12 @@ fun BoardItem(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color.LightGray),
-                model = board.attachments[0].url,
+                    .background(MaterialTheme.colorScheme.surface),
+//                model = board.attachments[0].url,
+                model = ImageRequest.Builder(context)
+                    .data(board.attachments[0].url)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
@@ -96,7 +101,9 @@ fun BoardItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = SimpleDateFormat("MMM d, yyyy 'at' hh:mm a").format(board.date),
+                    text = SimpleDateFormat("MMM d, yyyy 'at' hh:mm a", Locale.getDefault()).format(
+                        board.date
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )

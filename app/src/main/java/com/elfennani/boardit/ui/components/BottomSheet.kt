@@ -50,7 +50,9 @@ fun BottomSheet(
     ModalBottomSheet(
         onDismissRequest = if (enabled) onDismissRequest else ({}),
         sheetState = state,
-        windowInsets = WindowInsets.displayCutout
+        windowInsets = WindowInsets.displayCutout,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
     ) {
         Column(
             modifier = Modifier

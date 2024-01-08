@@ -10,10 +10,18 @@ data class AttachmentEntity(
     val fileName: String,
     val url: String,
     val userId: String,
-    val boardId: Int
+    val boardId: Int,
+    val mime: String,
+    val width: Int?,
+    val height: Int?,
 )
 
-fun AttachmentEntity.asExternalModel() = Attachment(
-    id,
-    url
-)
+fun AttachmentEntity.asExternalModel(): Attachment = when {
+    mime.startsWith("image/") -> Attachment.Image(
+        id,
+        url,
+        checkNotNull(width),
+        checkNotNull(height)
+    )
+    else -> Attachment.Unsupported
+}
