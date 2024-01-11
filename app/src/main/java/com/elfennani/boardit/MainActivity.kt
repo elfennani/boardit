@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
             supabaseClient.auth.awaitInitialization()
         }
         val user = supabaseClient.auth.currentUserOrNull()
+
 
         setContent {
             BoarditTheme {

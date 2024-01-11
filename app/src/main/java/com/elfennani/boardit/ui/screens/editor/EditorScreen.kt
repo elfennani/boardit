@@ -1,10 +1,18 @@
 package com.elfennani.boardit.ui.screens.editor
 
+import android.app.Activity
+import android.app.Instrumentation.ActivityResult
 import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.registerForActivityResult
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,10 +23,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,6 +39,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FolderCopy
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -55,7 +72,9 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import coil.compose.AsyncImage
 import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.screens.editor.components.EditorAttachementActions
 import com.elfennani.boardit.ui.screens.editor.components.EditorScaffold
@@ -63,44 +82,43 @@ import com.elfennani.boardit.ui.screens.editor.components.EditorSelector
 import com.elfennani.boardit.ui.screens.editor.components.EditorTextFields
 import com.elfennani.boardit.ui.screens.editor.components.SelectCategoryBottomSheet
 import com.elfennani.boardit.ui.screens.editor.components.SelectTagsBottomSheet
+import com.elfennani.boardit.ui.screens.home.navigateToHomeScreen
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EditorScreen(
     state: EditorScreenState,
-    onSave: () -> Unit,
-    onTitleChange: (TextFieldValue) -> Unit,
-    onBodyChange: (TextFieldValue) -> Unit,
-    onOpenCategoryModal: () -> Unit,
-    onOpenTagModal: () -> Unit,
-    onSelectCategory: (Category) -> Unit,
-    onSelectTag: (Tag) -> Unit,
-    onCloseModal: () -> Unit,
+    onEvent: (EditorScreenEvent) -> Unit,
+    onMedia: (PickVisualMediaRequest) -> Unit,
+    onNavigateToHome: () -> Unit,
     onBack: () -> Unit
 ) {
     EditorScaffold(
         onBack = onBack,
-        onSave = onSave,
+        onSave = { onEvent(EditorScreenEvent.Save) },
         disabled = state.isSaving,
-        onDelete = {}
+        onDelete = if(!state.isNew) ({ onEvent(EditorScreenEvent.DeleteBoard) }) else null
     ) {
-        LaunchedEffect(key1 = state.isDone){
-            if(state.isDone) onBack()
+        LaunchedEffect(key1 = state.isDone) {
+            if (state.isDone) onBack()
+        }
+        LaunchedEffect(key1 = state.isDoneDeleting) {
+            if (state.isDoneDeleting) onNavigateToHome()
         }
 
         when (state.modalState) {
             ModalState.SELECT_CATEGORY -> SelectCategoryBottomSheet(
                 categories = state.categories,
                 selected = state.selectedCategory,
-                onSelect = onSelectCategory,
-                onClose = onCloseModal
+                onSelect = { onEvent(EditorScreenEvent.SelectCategory(it)) },
+                onClose = { onEvent(EditorScreenEvent.CloseModal) }
             )
 
             ModalState.SELECT_TAGS -> SelectTagsBottomSheet(
                 tags = state.tags,
                 selected = state.selectedTags,
-                onSelect = onSelectTag,
-                onClose = onCloseModal
+                onSelect = { onEvent(EditorScreenEvent.SelectTag(it)) },
+                onClose = { onEvent(EditorScreenEvent.CloseModal) }
             )
 
             else -> {}
@@ -114,18 +132,70 @@ fun EditorScreen(
             EditorTextFields(
                 titleValue = state.titleTextFieldValue,
                 bodyValue = state.bodyTextFieldValue,
-                onTitleChange = onTitleChange,
-                onBodyChange = onBodyChange
+                onTitleChange = { onEvent(EditorScreenEvent.ModifyTitle(it)) },
+                onBodyChange = { onEvent(EditorScreenEvent.ModifyBody(it)) }
             )
 
+            val arrangement = Arrangement.spacedBy(16.dp)
+            if (state.attachments.isNotEmpty())
+                FlowRow(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = arrangement,
+                    horizontalArrangement = arrangement
+                ) {
+                    state.attachments.forEach {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surface,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .size(64.dp)
+                                .graphicsLayer { clip = false },
+                        ) {
+                            AsyncImage(
+                                model = when (it) {
+                                    is EditorAttachment.Remote -> it.attachment.url
+                                    is EditorAttachment.Local -> it.uri
+                                },
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(6.dp, (-6).dp)
+                                    .clip(CircleShape)
+                                    .clickable(role = Role.Button) { onEvent(EditorScreenEvent.DeleteAttachment(it)) }
+                                    .background(MaterialTheme.colorScheme.error)
+                                    .size(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
             EditorAttachementActions(
-                onImage = { /*TODO*/ },
                 onLink = { /*TODO*/ },
+                onImage = { onMedia(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onPdf = { /*TODO*/ }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        EditorSelector(onClick = onOpenCategoryModal, icon = Icons.Rounded.FolderCopy) {
+        EditorSelector(
+            onClick = { onEvent(EditorScreenEvent.OpenModal(ModalState.SELECT_CATEGORY)) },
+            icon = Icons.Rounded.FolderCopy
+        ) {
             AnimatedContent(state.selectedCategory, label = "category") { category ->
                 Text(
                     text = category?.label ?: "Select Category",
@@ -140,7 +210,10 @@ fun EditorScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        EditorSelector(onClick = onOpenTagModal, icon = Icons.Rounded.Tag) {
+        EditorSelector(
+            onClick = { onEvent(EditorScreenEvent.OpenModal(ModalState.SELECT_TAGS)) },
+            icon = Icons.Rounded.Tag
+        ) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -191,18 +264,22 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
     ) {
         val viewModel: EditorViewModel = hiltViewModel()
         val state by viewModel.state.collectAsState()
+        val context = LocalContext.current
+        val limit = ActivityResultContracts.PickMultipleVisualMedia(5)
+        val pickImages = rememberLauncherForActivityResult(limit) {
+            viewModel.event(
+                EditorScreenEvent.PickImages(it, context)
+            )
+        }
 
         EditorScreen(
             state,
-            onSave = { viewModel.event(EditorScreenEvent.Save) },
-            onTitleChange = { viewModel.event(EditorScreenEvent.ModifyTitle(it)) },
-            onBodyChange = { viewModel.event(EditorScreenEvent.ModifyBody(it)) },
-            onOpenCategoryModal = { viewModel.event((EditorScreenEvent.OpenModal(ModalState.SELECT_CATEGORY))) },
-            onOpenTagModal = { viewModel.event((EditorScreenEvent.OpenModal(ModalState.SELECT_TAGS))) },
-            onSelectCategory = { viewModel.event(EditorScreenEvent.SelectCategory(it)) },
-            onSelectTag = { viewModel.event(EditorScreenEvent.SelectTag(it)) },
-            onCloseModal = { viewModel.event(EditorScreenEvent.CloseModal) },
-            onBack = navController::popBackStack
+            onEvent = viewModel::event,
+            onMedia = pickImages::launch,
+            onBack = navController::popBackStack,
+            onNavigateToHome = {
+                navController.navigateToHomeScreen(true)
+            }
         )
     }
 }

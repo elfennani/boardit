@@ -1,15 +1,19 @@
 package com.elfennani.boardit.ui.screens.editor
 
-import android.util.Log
+import android.annotation.SuppressLint
+import android.content.Context
+import android.net.Uri
+import android.os.Build
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.elfennani.boardit.data.models.Board
-import com.elfennani.boardit.data.models.Category
-import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.models.Attachment
+import com.elfennani.boardit.data.models.DataType
+import com.elfennani.boardit.data.models.EditorAttachment
+import com.elfennani.boardit.data.models.toEditorAttachment
 import com.elfennani.boardit.data.remote.models.NetworkBoardInsert
-import com.elfennani.boardit.data.remote.models.NetworkBoardTagsInsert
 import com.elfennani.boardit.data.repository.BoardRepository
 import com.elfennani.boardit.data.repository.CategoryRepository
 import com.elfennani.boardit.data.repository.TagRepository
@@ -20,25 +24,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.Random
 import javax.inject.Inject
 
 @HiltViewModel
-class EditorViewModel @Inject constructor(
+class EditorViewModel @SuppressLint("StaticFieldLeak")
+@Inject constructor(
     private val categoryRepository: CategoryRepository,
     private val tagRepository: TagRepository,
     private val boardRepository: BoardRepository,
     private val supabaseClient: SupabaseClient,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+//    @ApplicationContext applicationContext: Context
 ) : ViewModel() {
 
     private val stateFlow: MutableStateFlow<String> = MutableStateFlow("")
-
-//    private var _state = mutableStateOf(EditorScreenState())
-//    val state: State<EditorScreenState> = _state
 
     private val boardId = savedStateHandle.get<String>("id")
     private val board = runBlocking {
@@ -52,6 +55,8 @@ class EditorViewModel @Inject constructor(
             bodyTextFieldValue = TextFieldValue(board.note ?: ""),
             selectedCategory = board.category,
             selectedTags = board.tags.toSet(),
+            attachments = board.attachments.map(Attachment::toEditorAttachment),
+            isNew = false
         ) else
         EditorScreenState()
 
@@ -71,10 +76,6 @@ class EditorViewModel @Inject constructor(
         )
 
     fun event(event: EditorScreenEvent) {
-        Log.d(
-            "BOARDID",
-            savedStateHandle.get<String>("android-support-nav:controller:deepLinkIntent").toString()
-        )
         _state.value = when (event) {
             is EditorScreenEvent.ModifyTitle -> _state.value.copy(titleTextFieldValue = event.textFieldValue)
             is EditorScreenEvent.ModifyBody -> _state.value.copy(bodyTextFieldValue = event.textFieldValue)
@@ -97,11 +98,44 @@ class EditorViewModel @Inject constructor(
                 save()
                 _state.value
             }
+
+            is EditorScreenEvent.DeleteAttachment -> _state.value.copy(attachments = _state.value.attachments - event.editorAttachment)
+
+            is EditorScreenEvent.DeleteBoard -> {
+                delete()
+                _state.value
+            }
+
+            is EditorScreenEvent.PickImages -> {
+                _state.value.copy(
+                    attachments = _state.value.attachments + event.uris.toEditorAttachments(
+                        event.context
+                    )
+                )
+            }
         }
     }
 
-    fun validate(): Boolean =
-        _state.value.selectedCategory != null && _state.value.titleTextFieldValue.text.isNotBlank()
+    private fun List<Uri>.toEditorAttachments(context: Context): List<EditorAttachment> = this.map {
+        val exif = ExifInterface(context.contentResolver.openInputStream(it)!!)
+        val width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
+        val height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0);
+
+        EditorAttachment.Local(
+            uri = it,
+            width = width,
+            height = height,
+        )
+    }
+
+    private fun delete(){
+        viewModelScope.launch {
+            // TODO: change it to isDeleting
+            _state.value = _state.value.copy(isDeleting = true)
+            boardRepository.deleteBoard(board!!)
+            _state.value = _state.value.copy(isDeleting = false, isDoneDeleting = true)
+        }
+    }
 
     private fun save() {
         val state = _state.value;
@@ -121,7 +155,8 @@ class EditorViewModel @Inject constructor(
                         userId = user.id,
                         categoryId = state.selectedCategory.id
                     ),
-                    tags = state.selectedTags.toList()
+                    tags = state.selectedTags.toList(),
+                    attachments = state.attachments
                 )
             } else {
                 boardRepository.update(
@@ -131,10 +166,13 @@ class EditorViewModel @Inject constructor(
                         tags = state.selectedTags.toList(),
                         category = state.selectedCategory
                     ),
-                    state.selectedTags.toList() != board.tags
+                    state.selectedTags.toList() != board.tags,
+                    state.attachments,
+                    board.attachments.size != state.attachments.filterIsInstance<EditorAttachment.Remote>().size
                 )
             }
             _state.value = _state.value.copy(isSaving = false, isDone = true)
         }
     }
 }
+

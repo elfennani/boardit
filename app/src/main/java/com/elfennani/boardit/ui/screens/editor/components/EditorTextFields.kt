@@ -63,7 +63,7 @@ fun EditorTextFields(
             }
 
         }
-
+        Spacer(modifier = Modifier.height(16.dp))
         BasicTextField(
             value = bodyValue,
             onValueChange = onBodyChange,

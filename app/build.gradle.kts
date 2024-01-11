@@ -79,6 +79,8 @@ android {
 
 dependencies {
 
+    implementation("androidx.exifinterface:exifinterface:1.3.6")
+
     // Coil
     implementation("io.coil-kt:coil:2.5.0")
     implementation("io.coil-kt:coil-compose:2.5.0")
