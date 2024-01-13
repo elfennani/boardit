@@ -14,8 +14,10 @@ sealed class EditorScreenEvent {
     data class SelectCategory(val category: Category) : EditorScreenEvent()
     data class SelectTag(val tag: Tag) : EditorScreenEvent()
     data class PickImages(val uris: List<Uri>, val context: Context) : EditorScreenEvent()
+    data class PickPdfs(val uris: List<Uri>, val context: Context) : EditorScreenEvent()
+    data class PickLink(val url: String): EditorScreenEvent()
     data object CloseModal : EditorScreenEvent()
     data object Save : EditorScreenEvent()
-    data class DeleteAttachment(val editorAttachment: EditorAttachment): EditorScreenEvent()
-    data object DeleteBoard: EditorScreenEvent()
+    data class DeleteAttachment(val editorAttachment: EditorAttachment) : EditorScreenEvent()
+    data object DeleteBoard : EditorScreenEvent()
 }

@@ -45,4 +45,9 @@ class DatabaseModule {
     @Provides
     fun provideAttachmentDao(database: AppDatabase) =
         database.attachmentDao()
+
+    @Singleton
+    @Provides
+    fun provideCachedAttachmentDao(database: AppDatabase) =
+        database.cachedAttachmentDao()
 }

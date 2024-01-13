@@ -7,7 +7,7 @@ import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
 
 enum class ModalState {
-    CLOSED, SELECT_CATEGORY, SELECT_TAGS
+    CLOSED, SELECT_CATEGORY, SELECT_TAGS, INSERT_LINK
 }
 
 data class EditorScreenState(

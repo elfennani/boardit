@@ -6,6 +6,7 @@ import android.webkit.MimeTypeMap
 import com.elfennani.boardit.data.local.dao.AttachmentDao
 import com.elfennani.boardit.data.local.dao.BoardDao
 import com.elfennani.boardit.data.local.entities.asExternalModel
+import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
@@ -33,8 +34,8 @@ private data class InsertAttachment(
     val user_id: String,
     val board_id: Int,
     val mime: String,
-    val width: Int,
-    val height: Int
+    val width: Int?,
+    val height: Int?
 )
 
 
@@ -126,33 +127,50 @@ class BoardRepositoryImpl @Inject constructor(
         val userId = checkNotNull(supabaseClient.auth.currentUserOrNull()).id
 
         attachments.forEach { attachment ->
-            val uri = attachment.uri
-            val stream = appContext.contentResolver.openInputStream(uri)!!
-            val mime = appContext.contentResolver.getType(uri)!!
-            val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
-            val filename = UUID.randomUUID().toString() + "." + extension
-            val path = "$userId/$filename"
-
-            bucketApi.upload(
-                path,
-                stream.readBytes(),
-                upsert = false
-            )
-            stream.close()
-
-            supabaseClient
-                .from("attachement")
-                .insert(
-                    InsertAttachment(
-                        filename,
-                        bucketApi.publicUrl(path),
-                        userId,
-                        boardId,
-                        mime,
-                        attachment.width,
-                        attachment.height
+            if (attachment.type is AttachmentType.Link) {
+                supabaseClient
+                    .from("attachement")
+                    .insert(
+                        InsertAttachment(
+                            attachment.uri.toString(),
+                            attachment.uri.toString(),
+                            userId,
+                            boardId,
+                            "other/link",
+                            null,
+                            null
+                        )
                     )
+            } else {
+
+                val uri = attachment.uri
+                val stream = appContext.contentResolver.openInputStream(uri)!!
+                val mime = appContext.contentResolver.getType(uri)!!
+                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
+                val filename = UUID.randomUUID().toString() + "." + extension
+                val path = "$userId/$filename"
+
+                bucketApi.upload(
+                    path,
+                    stream.readBytes(),
+                    upsert = false
                 )
+                stream.close()
+
+                supabaseClient
+                    .from("attachement")
+                    .insert(
+                        InsertAttachment(
+                            filename,
+                            bucketApi.publicUrl(path),
+                            userId,
+                            boardId,
+                            mime,
+                            if (attachment.type is AttachmentType.Image) attachment.type.width else null,
+                            if (attachment.type is AttachmentType.Image) attachment.type.height else null
+                        )
+                    )
+            }
         }
     }
 
@@ -212,7 +230,8 @@ class BoardRepositoryImpl @Inject constructor(
                     .map { it.attachment }
                     .toSet()
 
-            bucketApi.delete(deletedAttachments.map { it.url.split("/main/")[1] })
+            bucketApi.delete(deletedAttachments.filter { it.type !is AttachmentType.Link }
+                .map { it.url.split("/main/")[1] })
 
             supabaseClient
                 .from("attachement")
@@ -233,7 +252,7 @@ class BoardRepositoryImpl @Inject constructor(
     override suspend fun deleteBoard(board: Board) {
         supabaseClient
             .from(tableName)
-            .delete{
+            .delete {
                 filter {
                     NetworkBoard::id eq board.id
                 }

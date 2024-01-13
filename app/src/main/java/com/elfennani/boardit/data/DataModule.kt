@@ -3,6 +3,8 @@ package com.elfennani.boardit.data
 import android.content.Context
 import com.elfennani.boardit.data.repository.BoardRepository
 import com.elfennani.boardit.data.repository.BoardRepositoryImpl
+import com.elfennani.boardit.data.repository.CachedAttachmentRepository
+import com.elfennani.boardit.data.repository.CachedAttachmentRepositoryImpl
 import com.elfennani.boardit.data.repository.CategoryRepository
 import com.elfennani.boardit.data.repository.CategoryRepositoryImpl
 import com.elfennani.boardit.data.repository.TagRepository
@@ -36,4 +38,9 @@ interface DataModule {
         boardRepository: BoardRepositoryImpl
     ) : BoardRepository
 
+    @Singleton
+    @Binds
+    fun bindCachedAttachmentRepository(
+        cachedAttachmentRepository: CachedAttachmentRepositoryImpl
+    ) : CachedAttachmentRepository
 }

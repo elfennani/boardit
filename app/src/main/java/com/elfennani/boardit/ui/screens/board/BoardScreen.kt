@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.ui.screens.board.components.BoardAttachments
@@ -49,10 +51,13 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoardScreen(
-    board: Board?,
+    state: BoardScreenState,
     onNavigateToEdit: (Int) -> Unit,
+    onRequestAttachment: (Attachment) -> Unit,
     onBack: () -> Unit
 ) {
+    val board = state.board
+
     BoardScaffold(
         title = board?.title ?: "",
         onBack = onBack,
@@ -60,7 +65,12 @@ fun BoardScreen(
     ) {
         if (board != null) {
             if (board.attachments.isNotEmpty()) {
-                BoardAttachments(attachments = board.attachments)
+                BoardAttachments(
+                    attachments = board.attachments,
+                    state.currentlyDownloadingAttachments,
+                    state.downloadedAttachments,
+                    onRequestAttachment
+                )
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
@@ -164,13 +174,14 @@ fun NavGraphBuilder.boardScreen(navController: NavController) {
         }
     ) {
         val boardViewModel: BoardViewModel = hiltViewModel()
-        val board by boardViewModel.boards.collectAsState()
+        val state by boardViewModel.state.collectAsState()
 
         BoardScreen(
-            board = board,
+            state = state,
             onNavigateToEdit = {
                 navController.navigateToEditorScreen(it)
             },
+            onRequestAttachment = boardViewModel::requestAttachment,
             onBack = {
                 navController.popBackStack()
             }

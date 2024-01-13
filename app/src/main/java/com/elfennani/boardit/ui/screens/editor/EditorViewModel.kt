@@ -3,14 +3,13 @@ package com.elfennani.boardit.ui.screens.editor
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elfennani.boardit.data.models.Attachment
-import com.elfennani.boardit.data.models.DataType
+import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.toEditorAttachment
 import com.elfennani.boardit.data.remote.models.NetworkBoardInsert
@@ -27,7 +26,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.util.Random
 import javax.inject.Inject
 
 @HiltViewModel
@@ -108,27 +106,41 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
 
             is EditorScreenEvent.PickImages -> {
                 _state.value.copy(
-                    attachments = _state.value.attachments + event.uris.toEditorAttachments(
+                    attachments = _state.value.attachments + event.uris.toEditorAttachmentsImages(
                         event.context
                     )
                 )
             }
+
+            is EditorScreenEvent.PickPdfs -> _state.value.copy(
+                attachments = _state.value.attachments + event.uris.toEditorAttachmentsPdf()
+            )
+
+            is EditorScreenEvent.PickLink -> _state.value.copy(
+                attachments = _state.value.attachments + EditorAttachment.Local(
+                    uri = Uri.parse(event.url),
+                    type = AttachmentType.Link
+                )
+            )
         }
     }
 
-    private fun List<Uri>.toEditorAttachments(context: Context): List<EditorAttachment> = this.map {
-        val exif = ExifInterface(context.contentResolver.openInputStream(it)!!)
-        val width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
-        val height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0);
+    private fun List<Uri>.toEditorAttachmentsPdf(): List<EditorAttachment> =
+        map { EditorAttachment.Local(it, AttachmentType.Pdf) }
 
-        EditorAttachment.Local(
-            uri = it,
-            width = width,
-            height = height,
-        )
-    }
+    private fun List<Uri>.toEditorAttachmentsImages(context: Context): List<EditorAttachment> =
+        this.map {
+            val exif = ExifInterface(context.contentResolver.openInputStream(it)!!)
+            val width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
+            val height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0);
 
-    private fun delete(){
+            EditorAttachment.Local(
+                uri = it,
+                type = AttachmentType.Image(width, height),
+            )
+        }
+
+    private fun delete() {
         viewModelScope.launch {
             // TODO: change it to isDeleting
             _state.value = _state.value.copy(isDeleting = true)
@@ -175,4 +187,5 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
         }
     }
 }
+
 

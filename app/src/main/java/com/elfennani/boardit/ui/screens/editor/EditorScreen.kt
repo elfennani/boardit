@@ -1,18 +1,13 @@
 package com.elfennani.boardit.ui.screens.editor
 
-import android.app.Activity
-import android.app.Instrumentation.ActivityResult
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.registerForActivityResult
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,25 +24,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.LocalTextSelectionColors
-import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FolderCopy
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,23 +48,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
-import com.elfennani.boardit.data.models.Category
+import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
-import com.elfennani.boardit.ui.screens.editor.components.EditorAttachementActions
+import com.elfennani.boardit.ui.screens.editor.components.EditorAttachmentActions
 import com.elfennani.boardit.ui.screens.editor.components.EditorScaffold
 import com.elfennani.boardit.ui.screens.editor.components.EditorSelector
 import com.elfennani.boardit.ui.screens.editor.components.EditorTextFields
+import com.elfennani.boardit.ui.screens.editor.components.InsertLinkBottomSheet
 import com.elfennani.boardit.ui.screens.editor.components.SelectCategoryBottomSheet
 import com.elfennani.boardit.ui.screens.editor.components.SelectTagsBottomSheet
 import com.elfennani.boardit.ui.screens.home.navigateToHomeScreen
@@ -90,6 +73,7 @@ fun EditorScreen(
     state: EditorScreenState,
     onEvent: (EditorScreenEvent) -> Unit,
     onMedia: (PickVisualMediaRequest) -> Unit,
+    onPdf: () -> Unit,
     onNavigateToHome: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -97,7 +81,7 @@ fun EditorScreen(
         onBack = onBack,
         onSave = { onEvent(EditorScreenEvent.Save) },
         disabled = state.isSaving,
-        onDelete = if(!state.isNew) ({ onEvent(EditorScreenEvent.DeleteBoard) }) else null
+        onDelete = if (!state.isNew) ({ onEvent(EditorScreenEvent.DeleteBoard) }) else null
     ) {
         LaunchedEffect(key1 = state.isDone) {
             if (state.isDone) onBack()
@@ -121,7 +105,14 @@ fun EditorScreen(
                 onClose = { onEvent(EditorScreenEvent.CloseModal) }
             )
 
-            else -> {}
+            ModalState.INSERT_LINK -> InsertLinkBottomSheet(
+                onClose = { onEvent(EditorScreenEvent.CloseModal) },
+                onConfirm = {
+                    onEvent(EditorScreenEvent.PickLink(it))
+                }
+            )
+
+            ModalState.CLOSED -> {}
         }
 
         Column(
@@ -152,24 +143,50 @@ fun EditorScreen(
                                 )
                                 .size(64.dp)
                                 .graphicsLayer { clip = false },
+                            contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = when (it) {
-                                    is EditorAttachment.Remote -> it.attachment.url
-                                    is EditorAttachment.Local -> it.uri
-                                },
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .fillMaxSize(),
-                                contentScale = ContentScale.Crop,
-                            )
+                            val attachmentType = when (it) {
+                                is EditorAttachment.Remote -> it.attachment.type
+                                is EditorAttachment.Local -> it.type
+                            }
+                            when (attachmentType) {
+                                is AttachmentType.Image -> AsyncImage(
+                                    model = when (it) {
+                                        is EditorAttachment.Remote -> it.attachment.url
+                                        is EditorAttachment.Local -> it.uri
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+
+                                is AttachmentType.Pdf -> Icon(
+                                    imageVector = Icons.Rounded.PictureAsPdf,
+                                    contentDescription = null,
+                                )
+
+                                is AttachmentType.Link -> Icon(
+                                    imageVector = Icons.Rounded.Link,
+                                    contentDescription = null,
+                                )
+
+                                is AttachmentType.Unsupported -> {}
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .offset(6.dp, (-6).dp)
                                     .clip(CircleShape)
-                                    .clickable(role = Role.Button) { onEvent(EditorScreenEvent.DeleteAttachment(it)) }
+                                    .clickable(role = Role.Button) {
+                                        onEvent(
+                                            EditorScreenEvent.DeleteAttachment(
+                                                it
+                                            )
+                                        )
+                                    }
                                     .background(MaterialTheme.colorScheme.error)
                                     .size(20.dp),
                                 contentAlignment = Alignment.Center
@@ -185,10 +202,10 @@ fun EditorScreen(
                     }
                 }
 
-            EditorAttachementActions(
-                onLink = { /*TODO*/ },
+            EditorAttachmentActions(
+                onLink = { onEvent(EditorScreenEvent.OpenModal(ModalState.INSERT_LINK)) },
                 onImage = { onMedia(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                onPdf = { /*TODO*/ }
+                onPdf = { onPdf() }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -272,10 +289,16 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
             )
         }
 
+        val pickPdf =
+            rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
+                viewModel.event(EditorScreenEvent.PickPdfs(it, context))
+            }
+
         EditorScreen(
             state,
             onEvent = viewModel::event,
             onMedia = pickImages::launch,
+            onPdf = { pickPdf.launch(arrayOf("application/pdf")) },
             onBack = navController::popBackStack,
             onNavigateToHome = {
                 navController.navigateToHomeScreen(true)
