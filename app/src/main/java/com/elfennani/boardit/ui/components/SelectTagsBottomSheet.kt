@@ -1,4 +1,4 @@
-package com.elfennani.boardit.ui.screens.editor.components
+package com.elfennani.boardit.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.data.models.getColor
-import com.elfennani.boardit.ui.components.BottomSheet
 
 @Composable
 fun SelectTagsBottomSheet(

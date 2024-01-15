@@ -1,5 +1,7 @@
 package com.elfennani.boardit
 
+import android.app.Activity
+import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -31,3 +33,8 @@ fun LocalDateTime.formatReadable(): String = this.format(
         "MMM d, yyyy 'at' hh:mm a"
     )
 )
+
+fun Context.getActivity(): Activity = when (this) {
+    is Activity -> this
+    else -> this.getActivity()
+}

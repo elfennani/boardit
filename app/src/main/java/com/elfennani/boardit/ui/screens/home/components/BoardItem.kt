@@ -43,19 +43,21 @@ import java.util.UUID
 @SuppressLint("SimpleDateFormat")
 @Composable
 fun BoardItem(
+    modifier: Modifier = Modifier,
     board: Board,
-    onClick: (Board) -> Unit = {}
+    onClick: (Board) -> Unit = {},
 ) {
     val context = LocalContext.current
 
     Row(
-        Modifier
+        modifier
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .fillMaxWidth()
             .clickable { onClick(board) }
             .padding(12.dp)
-            .height(IntrinsicSize.Min),
+            .height(IntrinsicSize.Min)
+        ,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (board.attachments.isNotEmpty()) {
@@ -136,7 +138,7 @@ fun BoardPreview() {
                 .width(350.dp)
         ) {
             BoardItem(
-                Board(
+                board = Board(
                     id = UUID.randomUUID().toString(),
                     title = "Hello World",
                     category = Category(UUID.randomUUID().toString(), "Haha"),

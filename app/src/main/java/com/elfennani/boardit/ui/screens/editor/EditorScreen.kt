@@ -54,6 +54,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import coil.compose.AsyncImage
 import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.Tag
@@ -64,7 +65,7 @@ import com.elfennani.boardit.ui.screens.editor.components.EditorSelector
 import com.elfennani.boardit.ui.screens.editor.components.EditorTextFields
 import com.elfennani.boardit.ui.screens.editor.components.InsertLinkBottomSheet
 import com.elfennani.boardit.ui.screens.editor.components.SelectCategoryBottomSheet
-import com.elfennani.boardit.ui.screens.editor.components.SelectTagsBottomSheet
+import com.elfennani.boardit.ui.components.SelectTagsBottomSheet
 import com.elfennani.boardit.ui.screens.home.navigateToHomeScreen
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -263,10 +264,19 @@ private fun TagCard(tag: Tag) {
 }
 
 const val EditorScreenPattern = "boards/edit"
+val arguments = listOf(
+    navArgument("id") { nullable = true },
+)
+val deepLinks = listOf(
+    navDeepLink { mimeType = "text/plain" },
+    navDeepLink { mimeType = "image/*" }
+)
+
 fun NavGraphBuilder.editorScreen(navController: NavController) {
     composable(
         "$EditorScreenPattern?id={id}",
-        arguments = listOf(navArgument("id") { nullable = true }),
+        arguments = arguments,
+        deepLinks = deepLinks,
         enterTransition = {
             fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
         },
@@ -283,6 +293,7 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
                 EditorScreenEvent.PickImages(it, context)
             )
         }
+        Log.d("RECEIVEDINTENT",navController.currentBackStackEntry?.arguments.toString())
 
         val pickPdf =
             rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {

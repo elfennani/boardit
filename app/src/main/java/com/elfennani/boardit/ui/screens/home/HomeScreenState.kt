@@ -1,5 +1,6 @@
 package com.elfennani.boardit.ui.screens.home
 
+import androidx.compose.ui.text.input.TextFieldValue
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
@@ -11,10 +12,12 @@ sealed class SelectedCategory(){
 }
 
 data class HomeScreenState(
-    val isLoadingCategories: Boolean,
-    val categories: List<Category>?,
-    val isLoadingTags: Boolean,
-    val tags: List<Tag>?,
-    val currentCategory: SelectedCategory,
-    val boards: List<Board>?
+    val categories: List<Category> = emptyList(),
+    val tags: List<Tag> = emptyList(),
+    val currentCategory: SelectedCategory = SelectedCategory.Loading,
+    val boards: List<Board> = emptyList(),
+    val isFilteringTags: Boolean = false,
+    val isSearching: Boolean = false,
+    val filteredTags: Set<Tag> = emptySet(),
+    val searchValue: TextFieldValue = TextFieldValue()
 )

@@ -2,14 +2,18 @@ package com.elfennani.boardit.ui.screens.editor
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Parcelable
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.Board
@@ -38,7 +42,11 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
     @ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
 
-    private val stateFlow: MutableStateFlow<String> = MutableStateFlow("")
+    init {
+        savedStateHandle.get<Intent>(NavController.KEY_DEEP_LINK_INTENT)
+            ?.getStringExtra(Intent.EXTRA_TEXT)
+            ?.let { Log.d("RECEIVEDINTENT2", it.toString()) }
+    }
 
     private val boardId = savedStateHandle.get<String>("id")
     private val board = runBlocking {
@@ -46,16 +54,46 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
             .find { it.id == boardId } else null
     }
 
-    private val stateInitialValue = if (board != null)
-        EditorScreenState(
-            titleTextFieldValue = TextFieldValue(board.title),
-            bodyTextFieldValue = TextFieldValue(board.note ?: ""),
-            selectedCategory = board.category,
-            selectedTags = board.tags.toSet(),
-            attachments = board.attachments,
-            isNew = false
-        ) else
-        EditorScreenState()
+    private val stateInitialValue = getInitialValue()
+
+    private fun getInitialValue(): EditorScreenState {
+        if (board != null)
+            return EditorScreenState(
+                titleTextFieldValue = TextFieldValue(board.title),
+                bodyTextFieldValue = TextFieldValue(board.note ?: ""),
+                selectedCategory = board.category,
+                selectedTags = board.tags.toSet(),
+                attachments = board.attachments,
+                isNew = false
+            )
+
+        val intent = savedStateHandle.get<Intent>(NavController.KEY_DEEP_LINK_INTENT)
+        return when {
+            intent?.action == Intent.ACTION_SEND && intent.type == "text/plain" ->
+                EditorScreenState(
+                    bodyTextFieldValue = TextFieldValue(
+                        intent.getStringExtra(
+                            Intent.EXTRA_TEXT
+                        ) ?: ""
+                    )
+                )
+
+            intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true ->
+                EditorScreenState(
+                    attachments = listOf(intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as Uri).toAttachmentsImages()
+                )
+
+            intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true -> {
+                val list = intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)
+                return EditorScreenState(
+                    attachments = list?.map { (it as Uri) }?.toAttachmentsImages()
+                        ?: emptyList()
+                )
+            }
+
+            else -> EditorScreenState()
+        }
+    }
 
     private val _state = MutableStateFlow(stateInitialValue)
 
@@ -104,7 +142,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
 
             is EditorScreenEvent.PickImages -> {
                 _state.value.copy(
-                    attachments = _state.value.attachments + event.uris.toAttachmentsImages(event.context)
+                    attachments = _state.value.attachments + event.uris.toAttachmentsImages()
                 )
             }
 
@@ -133,7 +171,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
         }
 
 
-    private fun List<Uri>.toAttachmentsImages(context: Context): List<Attachment> =
+    private fun List<Uri>.toAttachmentsImages(): List<Attachment> =
         this.map {
             val filename = it.getFilename()
             val dimensions = it.getDimensions()
@@ -215,30 +253,6 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
                     )
                 )
 
-//            if (boardId == null) {
-//                boardRepository.insert(
-//                    boardInsert = NetworkBoardInsert(
-//                        title = state.titleTextFieldValue.text,
-//                        note = state.bodyTextFieldValue.text,
-//                        userId = user.id,
-//                        categoryId = state.selectedCategory.id
-//                    ),
-//                    tags = state.selectedTags.toList(),
-//                    attachments = state.attachments
-//                )
-//            } else {
-//                boardRepository.update(
-//                    board!!.copy(
-//                        title = state.titleTextFieldValue.text,
-//                        note = state.bodyTextFieldValue.text,
-//                        tags = state.selectedTags.toList(),
-//                        category = state.selectedCategory
-//                    ),
-//                    state.selectedTags.toList() != board.tags,
-//                    state.attachments,
-//                    board.attachments.size != state.attachments.filterIsInstance<EditorAttachment.Remote>().size
-//                )
-//            }
             _state.value = _state.value.copy(isSaving = false, isDone = true)
         }
     }
