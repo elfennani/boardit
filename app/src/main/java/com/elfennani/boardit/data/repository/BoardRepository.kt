@@ -1,265 +1,102 @@
 package com.elfennani.boardit.data.repository
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.webkit.MimeTypeMap
-import com.elfennani.boardit.data.local.dao.AttachmentDao
-import com.elfennani.boardit.data.local.dao.BoardDao
-import com.elfennani.boardit.data.local.entities.asExternalModel
-import com.elfennani.boardit.data.models.AttachmentType
+import android.util.Log
+import androidx.core.net.toUri
+import com.elfennani.boardit.data.local.models.SerializableAttachment
+import com.elfennani.boardit.data.local.models.SerializableBoard
+import com.elfennani.boardit.data.local.models.asExternalModel
+import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.Board
-import com.elfennani.boardit.data.models.EditorAttachment
-import com.elfennani.boardit.data.models.Tag
-import com.elfennani.boardit.data.remote.models.NetworkAttachment
-import com.elfennani.boardit.data.remote.models.NetworkBoard
-import com.elfennani.boardit.data.remote.models.NetworkBoardInsert
-import com.elfennani.boardit.data.remote.models.NetworkBoardTags
-import com.elfennani.boardit.data.remote.models.NetworkBoardTagsInsert
-import com.elfennani.boardit.data.remote.models.asEntity
+import com.elfennani.boardit.data.models.serialize
+import com.tencent.mmkv.MMKV
 import dagger.hilt.android.qualifiers.ApplicationContext
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.storage.BucketApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.Serializable
-import java.util.UUID
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
 import javax.inject.Inject
-
-@Serializable
-private data class InsertAttachment(
-    val filename: String,
-    val url: String,
-    val user_id: String,
-    val board_id: Int,
-    val mime: String,
-    val width: Int?,
-    val height: Int?
-)
 
 
 interface BoardRepository {
     val boards: Flow<List<Board>>
+    fun insert(board: Board)
 
-    suspend fun synchronize()
-    suspend fun insert(
-        boardInsert: NetworkBoardInsert,
-        tags: List<Tag>,
-        attachments: List<EditorAttachment>
-    )
+    fun update(board: Board)
 
-    suspend fun update(
-        board: Board,
-        didTagsChange: Boolean,
-        attachments: List<EditorAttachment>,
-        didOldAttachmentsChange: Boolean
-    )
-
-    suspend fun deleteBoard(board: Board)
+    fun deleteBoard(board: Board)
 }
 
 class BoardRepositoryImpl @Inject constructor(
-    private val boardDao: BoardDao,
-    private val tagRepository: TagRepository,
-    private val attachmentDao: AttachmentDao,
-    private val supabaseClient: SupabaseClient,
-    private val bucketApi: BucketApi,
-    @ApplicationContext private val appContext: Context
+    private val mmkv: MMKV,
+    @ApplicationContext private val context: Context
 ) : BoardRepository {
+
+    private var _boards = MutableStateFlow(getBoards())
     override val boards: Flow<List<Board>>
-        get() = boardDao.getBoardAndCategory().map { it.map { it.asExternalModel() } }
+        get() = _boards.map { it.map { board -> board.asExternalModel(mmkv) } }
 
-    private val tableName = "board"
-
-    override suspend fun synchronize() {
-        val user = checkNotNull(supabaseClient.auth.currentUserOrNull())
-
-        val boardsNetwork = supabaseClient
-            .from(tableName)
-            .select {
-                filter {
-                    NetworkBoard::userId eq user.id
-                }
-            }.decodeList<NetworkBoard>()
-        val attachmentNetwork = supabaseClient
-            .from("attachement")
-            .select {
-                filter {
-                    NetworkAttachment::userId eq user.id
-                }
-            }.decodeList<NetworkAttachment>()
-
-        attachmentDao.deleteNotExist(attachmentNetwork.map { it.id })
-        attachmentDao.upsertBatch(attachmentNetwork.map(NetworkAttachment::asEntity))
-        boardDao.deleteNotExist(boardsNetwork.map { it.id })
-        boardDao.upsertBatchBoards(boardsNetwork.map { it.asEntity() })
+    private fun getBoards(): List<SerializableBoard> {
+        val keys = mmkv.allKeys()?.toList()?.filter { it.startsWith("board:") } ?: emptyList()
+        return keys.map { Json.decodeFromString<SerializableBoard>(mmkv.decodeString(it)!!) }
     }
 
-    @SuppressLint("Range")
-    override suspend fun insert(
-        boardInsert: NetworkBoardInsert,
-        tags: List<Tag>,
-        attachments: List<EditorAttachment>
-    ) {
-        val user = checkNotNull(supabaseClient.auth.currentUserOrNull())
+    private fun updateBoards() = run { _boards.value = getBoards() }
 
-        val board = supabaseClient
-            .from(tableName)
-            .insert(boardInsert) {
-                select()
-            }
-            .decodeSingle<NetworkBoard>()
-
-        val localAttachments = attachments.filterIsInstance<EditorAttachment.Local>()
-
-        uploadAttachments(board.id, localAttachments)
-
-        supabaseClient
-            .from("board_tags")
-            .insert(tags.map { NetworkBoardTagsInsert(board.id, it.id, user.id) })
-
-        tagRepository.synchronize()
-        this.synchronize()
+    override fun deleteBoard(board: Board) {
+        mmkv.remove("board:${board.id}")
+        updateBoards()
     }
 
-    private suspend fun uploadAttachments(boardId: Int, attachments: List<EditorAttachment.Local>) {
-        val userId = checkNotNull(supabaseClient.auth.currentUserOrNull()).id
+    override fun insert(board: Board) {
+        saveAttachments(board.attachments, board.id)
+        mmkv.encode("board:${board.id}", Json.encodeToString(board.serialize()))
+        updateBoards()
+    }
 
-        attachments.forEach { attachment ->
-            if (attachment.type is AttachmentType.Link) {
-                supabaseClient
-                    .from("attachement")
-                    .insert(
-                        InsertAttachment(
-                            attachment.uri.toString(),
-                            attachment.uri.toString(),
-                            userId,
-                            boardId,
-                            "other/link",
-                            null,
-                            null
-                        )
-                    )
+    private fun saveAttachments(attachments: List<Attachment>, boardId: String) {
+        val toDeleteAttachment = getBoards()
+            .map { it.asExternalModel(mmkv) }
+            .find { it.id == boardId }
+            ?.attachments
+            ?.filter { !it.url.startsWith("content://") && attachments.find { att -> att.id == it.id } == null }
+
+        toDeleteAttachment?.forEach {
+            File(it.url).delete()
+            mmkv.remove("attachment:${it.id}")
+        }
+
+        val newAttachments = attachments.map {
+            if (it.url.startsWith("content://")) {
+
+                val bytes = context.contentResolver.openInputStream(it.url.toUri())
+                    .use { stream -> stream!!.readBytes() }
+
+                context.openFileOutput(it.fileName, Context.MODE_PRIVATE).use { stream ->
+                    stream.write(bytes)
+                }
+
+                return@map it.copy(url = File(context.filesDir, it.fileName).path)
             } else {
-
-                val uri = attachment.uri
-                val stream = appContext.contentResolver.openInputStream(uri)!!
-                val mime = appContext.contentResolver.getType(uri)!!
-                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
-                val filename = UUID.randomUUID().toString() + "." + extension
-                val path = "$userId/$filename"
-
-                bucketApi.upload(
-                    path,
-                    stream.readBytes(),
-                    upsert = false
-                )
-                stream.close()
-
-                supabaseClient
-                    .from("attachement")
-                    .insert(
-                        InsertAttachment(
-                            filename,
-                            bucketApi.publicUrl(path),
-                            userId,
-                            boardId,
-                            mime,
-                            if (attachment.type is AttachmentType.Image) attachment.type.width else null,
-                            if (attachment.type is AttachmentType.Image) attachment.type.height else null
-                        )
-                    )
+                return@map it
             }
+        }
+
+        newAttachments.forEach {
+            mmkv.encode(
+                "attachment:${it.id}",
+                Json.encodeToString<SerializableAttachment>(it.serialize())
+            )
         }
     }
 
-    override suspend fun update(
-        board: Board,
-        didTagsChange: Boolean,
-        attachments: List<EditorAttachment>,
-        didOldAttachmentsChange: Boolean
-    ) {
-        val user = checkNotNull(supabaseClient.auth.currentUserOrNull())
-
-        supabaseClient
-            .from(tableName)
-            .update({
-                NetworkBoard::title setTo board.title
-                NetworkBoard::note setTo board.note
-                NetworkBoard::category setTo board.category.id
-            }) {
-                filter {
-                    NetworkBoard::id eq board.id
-                }
-            }
-
-        if (didTagsChange) {
-            if (board.tags.isNotEmpty())
-                supabaseClient
-                    .from("board_tags")
-                    .upsert(board.tags.map { NetworkBoardTagsInsert(board.id, it.id, user.id) })
-
-            supabaseClient
-                .from("board_tags")
-                .delete {
-                    filter {
-                        if (board.tags.isEmpty())
-                            NetworkBoardTags::boardId eq board.id
-                        else
-                            and {
-                                NetworkBoardTags::boardId eq board.id
-                                and {
-                                    board.tags.forEach {
-                                        NetworkBoardTags::tagId neq it.id
-                                    }
-                                }
-                            }
-                    }
-                }
-
-            tagRepository.synchronize()
-        }
-
-        val localAttachments = attachments.filterIsInstance<EditorAttachment.Local>()
-        uploadAttachments(board.id, localAttachments)
-
-        if (didOldAttachmentsChange) {
-            val deletedAttachments =
-                board.attachments - attachments.filterIsInstance<EditorAttachment.Remote>()
-                    .map { it.attachment }
-                    .toSet()
-
-            bucketApi.delete(deletedAttachments.filter { it.type !is AttachmentType.Link }
-                .map { it.url.split("/main/")[1] })
-
-            supabaseClient
-                .from("attachement")
-                .delete {
-                    filter {
-                        or {
-                            deletedAttachments.forEach {
-                                NetworkAttachment::id eq it.id
-                            }
-                        }
-                    }
-                }
-        }
-
-        this.synchronize()
-    }
-
-    override suspend fun deleteBoard(board: Board) {
-        supabaseClient
-            .from(tableName)
-            .delete {
-                filter {
-                    NetworkBoard::id eq board.id
-                }
-            }
-
-        tagRepository.synchronize()
-        this.synchronize()
+    override fun update(board: Board) {
+        Log.d("BOARDID", board.id)
+        saveAttachments(board.attachments, board.id)
+        mmkv.encode("board:${board.id}", Json.encodeToString(board.serialize()))
+        updateBoards()
     }
 }
 

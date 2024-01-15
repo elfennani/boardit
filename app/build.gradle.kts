@@ -79,21 +79,15 @@ android {
 
 dependencies {
 
+    // MMKV
+    implementation("com.tencent:mmkv:1.3.2")
+
+    // Exif
     implementation("androidx.exifinterface:exifinterface:1.3.6")
 
     // Coil
     implementation("io.coil-kt:coil:2.5.0")
     implementation("io.coil-kt:coil-compose:2.5.0")
-
-    // Supabase
-    val supabaseVersion = "2.0.1"
-    val ktorVersion = "2.3.7"
-    implementation(platform("io.github.jan-tennert.supabase:bom:$supabaseVersion"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.ktor:ktor-client-android:$ktorVersion")
-    implementation("io.github.jan-tennert.supabase:compose-auth:$supabaseVersion")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt:$supabaseVersion")
-    implementation("io.github.jan-tennert.supabase:storage-kt:$supabaseVersion")
 
     // Google Fonts
     implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")
@@ -107,16 +101,9 @@ dependencies {
     val navVersion = "2.7.6"
     implementation("androidx.navigation:navigation-compose:$navVersion")
 
-    // Room
-    val roomVersion = "2.6.1"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    annotationProcessor("androidx.room:room-compiler:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    //noinspection KaptUsageInsteadOfKsp
-    kapt("androidx.room:room-compiler:$roomVersion")
-
 
     // Other
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.2")

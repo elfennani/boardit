@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.ui.unit.LayoutDirection
 import coil.request.ImageRequest
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 operator fun PaddingValues.plus(paddingValues: PaddingValues): PaddingValues {
     return PaddingValues(
@@ -23,3 +25,9 @@ fun ImageRequest.Builder.storage(url: String, token: String) =
     this.data(url)
         .addHeader("Authorization", "Bearer $token")
         .addHeader("apikey", this.build().context.getString(R.string.SUPABASE_ANON_KEY))
+
+fun LocalDateTime.formatReadable(): String = this.format(
+    DateTimeFormatter.ofPattern(
+        "MMM d, yyyy 'at' hh:mm a"
+    )
+)

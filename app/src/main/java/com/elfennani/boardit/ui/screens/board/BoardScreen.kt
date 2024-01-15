@@ -1,5 +1,6 @@
 package com.elfennani.boardit.ui.screens.board
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,13 +23,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,21 +35,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.models.getColor
+import com.elfennani.boardit.formatReadable
 import com.elfennani.boardit.ui.screens.board.components.BoardAttachments
 import com.elfennani.boardit.ui.screens.board.components.BoardScaffold
 import com.elfennani.boardit.ui.screens.editor.navigateToEditorScreen
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoardScreen(
     state: BoardScreenState,
-    onNavigateToEdit: (Int) -> Unit,
-    onRequestAttachment: (Attachment) -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val board = state.board
@@ -67,9 +61,6 @@ fun BoardScreen(
             if (board.attachments.isNotEmpty()) {
                 BoardAttachments(
                     attachments = board.attachments,
-                    state.currentlyDownloadingAttachments,
-                    state.downloadedAttachments,
-                    onRequestAttachment
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -85,7 +76,7 @@ fun BoardScreen(
                     tint = MaterialTheme.colorScheme.tertiary
                 )
                 Text(
-                    text = board.category.label,
+                    text = board.category?.label  ?: "Nothing?",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
@@ -98,10 +89,7 @@ fun BoardScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = SimpleDateFormat(
-                    "MMM d, yyyy 'at' hh:mm a",
-                    Locale.getDefault()
-                ).format(board.date),
+                text = board.date.formatReadable(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.tertiary
             )
@@ -144,13 +132,13 @@ private fun TagCard(tag: Tag) {
     Box(
         Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(tag.color.copy(alpha = 0.2f))
+            .background(tag.getColor().copy(alpha = 0.2f))
             .padding(vertical = 6.dp, horizontal = 12.dp)
     ) {
         Text(
             text = tag.label,
             style = MaterialTheme.typography.bodySmall,
-            color = tag.color,
+            color = tag.getColor(),
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -181,7 +169,6 @@ fun NavGraphBuilder.boardScreen(navController: NavController) {
             onNavigateToEdit = {
                 navController.navigateToEditorScreen(it)
             },
-            onRequestAttachment = boardViewModel::requestAttachment,
             onBack = {
                 navController.popBackStack()
             }
@@ -190,9 +177,6 @@ fun NavGraphBuilder.boardScreen(navController: NavController) {
 }
 
 fun NavController.navigateToBoardScreen(board: Board) {
-    this.navigate(BoardScreenPattern.replace("{id}", board.id.toString()))
-}
-
-fun NavController.navigateToBoardScreen(boardId: Int) {
-    this.navigate(BoardScreenPattern.replace("{id}", boardId.toString()))
+    Log.d("BOARDID", board.id)
+    this.navigate(BoardScreenPattern.replace("{id}", board.id))
 }

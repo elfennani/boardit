@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,10 +35,10 @@ import coil.request.ImageRequest
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.formatReadable
 import com.elfennani.boardit.ui.theme.BoarditTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.LocalDateTime
+import java.util.UUID
 
 @SuppressLint("SimpleDateFormat")
 @Composable
@@ -101,9 +100,7 @@ fun BoardItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = SimpleDateFormat("MMM d, yyyy 'at' hh:mm a", Locale.getDefault()).format(
-                        board.date
-                    ),
+                    text = board.date.formatReadable(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
@@ -140,10 +137,10 @@ fun BoardPreview() {
         ) {
             BoardItem(
                 Board(
-                    id = 0,
+                    id = UUID.randomUUID().toString(),
                     title = "Hello World",
-                    category = Category(0, "Haha"),
-                    date = Date(),
+                    category = Category(UUID.randomUUID().toString(), "Haha"),
+                    date = LocalDateTime.now(),
                     note = null
                 )
             )

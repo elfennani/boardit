@@ -3,22 +3,21 @@ package com.elfennani.boardit.ui.screens.editor
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
+import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.AttachmentType
-import com.elfennani.boardit.data.models.EditorAttachment
-import com.elfennani.boardit.data.models.toEditorAttachment
-import com.elfennani.boardit.data.remote.models.NetworkBoardInsert
+import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.repository.BoardRepository
 import com.elfennani.boardit.data.repository.CategoryRepository
 import com.elfennani.boardit.data.repository.TagRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.auth
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
@@ -34,9 +34,8 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
     private val categoryRepository: CategoryRepository,
     private val tagRepository: TagRepository,
     private val boardRepository: BoardRepository,
-    private val supabaseClient: SupabaseClient,
     private val savedStateHandle: SavedStateHandle,
-//    @ApplicationContext applicationContext: Context
+    @ApplicationContext private val applicationContext: Context
 ) : ViewModel() {
 
     private val stateFlow: MutableStateFlow<String> = MutableStateFlow("")
@@ -44,7 +43,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
     private val boardId = savedStateHandle.get<String>("id")
     private val board = runBlocking {
         if (boardId != null) boardRepository.boards.first()
-            .find { it.id == boardId.toInt() } else null
+            .find { it.id == boardId } else null
     }
 
     private val stateInitialValue = if (board != null)
@@ -53,7 +52,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
             bodyTextFieldValue = TextFieldValue(board.note ?: ""),
             selectedCategory = board.category,
             selectedTags = board.tags.toSet(),
-            attachments = board.attachments.map(Attachment::toEditorAttachment),
+            attachments = board.attachments,
             isNew = false
         ) else
         EditorScreenState()
@@ -97,8 +96,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
                 _state.value
             }
 
-            is EditorScreenEvent.DeleteAttachment -> _state.value.copy(attachments = _state.value.attachments - event.editorAttachment)
-
+            is EditorScreenEvent.DeleteAttachment -> _state.value.copy(attachments = _state.value.attachments - event.attachment)
             is EditorScreenEvent.DeleteBoard -> {
                 delete()
                 _state.value
@@ -106,9 +104,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
 
             is EditorScreenEvent.PickImages -> {
                 _state.value.copy(
-                    attachments = _state.value.attachments + event.uris.toEditorAttachmentsImages(
-                        event.context
-                    )
+                    attachments = _state.value.attachments + event.uris.toAttachmentsImages(event.context)
                 )
             }
 
@@ -117,28 +113,66 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
             )
 
             is EditorScreenEvent.PickLink -> _state.value.copy(
-                attachments = _state.value.attachments + EditorAttachment.Local(
-                    uri = Uri.parse(event.url),
+                attachments = _state.value.attachments + Attachment(
+                    url = event.url,
+                    fileName = event.url,
                     type = AttachmentType.Link
                 )
             )
         }
     }
 
-    private fun List<Uri>.toEditorAttachmentsPdf(): List<EditorAttachment> =
-        map { EditorAttachment.Local(it, AttachmentType.Pdf) }
-
-    private fun List<Uri>.toEditorAttachmentsImages(context: Context): List<EditorAttachment> =
-        this.map {
-            val exif = ExifInterface(context.contentResolver.openInputStream(it)!!)
-            val width = exif.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, 0)
-            val height = exif.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, 0);
-
-            EditorAttachment.Local(
-                uri = it,
-                type = AttachmentType.Image(width, height),
+    @SuppressLint("Range")
+    private fun List<Uri>.toEditorAttachmentsPdf(): List<Attachment> =
+        map {
+            Attachment(
+                url = it.toString(),
+                fileName = it.getFilename(),
+                type = AttachmentType.Pdf
             )
         }
+
+
+    private fun List<Uri>.toAttachmentsImages(context: Context): List<Attachment> =
+        this.map {
+            val filename = it.getFilename()
+            val dimensions = it.getDimensions()
+
+            Attachment(
+                fileName = filename,
+                type = AttachmentType.Image(dimensions.first, dimensions.second),
+                url = it.toString()
+            )
+        }
+
+    private fun Uri.getFilename(): String {
+        val mimeType: String? = MimeTypeMap.getSingleton()
+            .getExtensionFromMimeType(applicationContext.contentResolver.getType(this))
+        val extension = if (mimeType == null) null else ".$mimeType"
+
+        val filename = applicationContext.contentResolver.query(this, null, null, null, null)
+            .use { cursor ->
+                val index = cursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    ?: return@use "file-${System.currentTimeMillis()}$extension"
+                cursor.moveToFirst()
+                cursor.getString(index)
+            }
+
+        return filename
+    }
+
+    private fun Uri.getDimensions(): Pair<Int, Int> {
+        val filename = applicationContext.contentResolver.query(this, null, null, null, null)
+            .use { cursor ->
+                val widthIndex = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
+                val heightIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
+                cursor.moveToFirst()
+
+                Pair(cursor.getInt(widthIndex), cursor.getInt(heightIndex))
+            }
+
+        return filename
+    }
 
     private fun delete() {
         viewModelScope.launch {
@@ -157,32 +191,54 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
 
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
-            val user = checkNotNull(supabaseClient.auth.currentUserOrNull())
-
-            if (boardId == null) {
+            if (boardId == null)
                 boardRepository.insert(
-                    boardInsert = NetworkBoardInsert(
-                        title = state.titleTextFieldValue.text,
-                        note = state.bodyTextFieldValue.text,
-                        userId = user.id,
-                        categoryId = state.selectedCategory.id
-                    ),
-                    tags = state.selectedTags.toList(),
-                    attachments = state.attachments
+                    Board(
+                        title = _state.value.titleTextFieldValue.text,
+                        attachments = _state.value.attachments,
+                        note = _state.value.bodyTextFieldValue.text,
+                        category = _state.value.selectedCategory!!,
+                        tags = _state.value.selectedTags.toList(),
+                        date = LocalDateTime.now()
+                    )
                 )
-            } else {
+            else
                 boardRepository.update(
-                    board!!.copy(
-                        title = state.titleTextFieldValue.text,
-                        note = state.bodyTextFieldValue.text,
-                        tags = state.selectedTags.toList(),
-                        category = state.selectedCategory
-                    ),
-                    state.selectedTags.toList() != board.tags,
-                    state.attachments,
-                    board.attachments.size != state.attachments.filterIsInstance<EditorAttachment.Remote>().size
+                    Board(
+                        id = boardId,
+                        title = _state.value.titleTextFieldValue.text,
+                        attachments = _state.value.attachments,
+                        note = _state.value.bodyTextFieldValue.text,
+                        category = _state.value.selectedCategory!!,
+                        tags = _state.value.selectedTags.toList(),
+                        date = LocalDateTime.now()
+                    )
                 )
-            }
+
+//            if (boardId == null) {
+//                boardRepository.insert(
+//                    boardInsert = NetworkBoardInsert(
+//                        title = state.titleTextFieldValue.text,
+//                        note = state.bodyTextFieldValue.text,
+//                        userId = user.id,
+//                        categoryId = state.selectedCategory.id
+//                    ),
+//                    tags = state.selectedTags.toList(),
+//                    attachments = state.attachments
+//                )
+//            } else {
+//                boardRepository.update(
+//                    board!!.copy(
+//                        title = state.titleTextFieldValue.text,
+//                        note = state.bodyTextFieldValue.text,
+//                        tags = state.selectedTags.toList(),
+//                        category = state.selectedCategory
+//                    ),
+//                    state.selectedTags.toList() != board.tags,
+//                    state.attachments,
+//                    board.attachments.size != state.attachments.filterIsInstance<EditorAttachment.Remote>().size
+//                )
+//            }
             _state.value = _state.value.copy(isSaving = false, isDone = true)
         }
     }

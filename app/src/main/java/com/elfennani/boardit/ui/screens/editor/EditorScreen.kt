@@ -56,8 +56,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.elfennani.boardit.data.models.AttachmentType
-import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.models.getColor
 import com.elfennani.boardit.ui.screens.editor.components.EditorAttachmentActions
 import com.elfennani.boardit.ui.screens.editor.components.EditorScaffold
 import com.elfennani.boardit.ui.screens.editor.components.EditorSelector
@@ -145,16 +145,9 @@ fun EditorScreen(
                                 .graphicsLayer { clip = false },
                             contentAlignment = Alignment.Center
                         ) {
-                            val attachmentType = when (it) {
-                                is EditorAttachment.Remote -> it.attachment.type
-                                is EditorAttachment.Local -> it.type
-                            }
-                            when (attachmentType) {
+                            when (it.type) {
                                 is AttachmentType.Image -> AsyncImage(
-                                    model = when (it) {
-                                        is EditorAttachment.Remote -> it.attachment.url
-                                        is EditorAttachment.Local -> it.uri
-                                    },
+                                    model = it.url,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
@@ -182,9 +175,7 @@ fun EditorScreen(
                                     .clip(CircleShape)
                                     .clickable(role = Role.Button) {
                                         onEvent(
-                                            EditorScreenEvent.DeleteAttachment(
-                                                it
-                                            )
+                                            EditorScreenEvent.DeleteAttachment(it)
                                         )
                                     }
                                     .background(MaterialTheme.colorScheme.error)
@@ -255,13 +246,17 @@ private fun TagCard(tag: Tag) {
     Box(
         Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(tag.color.copy(alpha = 0.2f))
+            .background(
+                tag
+                    .getColor()
+                    .copy(alpha = 0.2f)
+            )
             .padding(vertical = 6.dp, horizontal = 12.dp)
     ) {
         Text(
             text = tag.label,
             style = MaterialTheme.typography.bodySmall,
-            color = tag.color,
+            color = tag.getColor(),
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -307,7 +302,7 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
     }
 }
 
-fun NavController.navigateToEditorScreen(id: Int? = null) {
+fun NavController.navigateToEditorScreen(id: String? = null) {
     Log.d("EDITORSCREEN", id.toString())
     if (id != null) {
         this.navigate("$EditorScreenPattern?id=$id")
