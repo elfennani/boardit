@@ -9,11 +9,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
-import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.models.getColor
 import com.elfennani.boardit.ui.components.BottomSheet
 import com.elfennani.boardit.ui.components.InputField
 
+@OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun EditTagBottomSheet(
     tag: Tag,
@@ -24,7 +25,7 @@ fun EditTagBottomSheet(
     var labelValue by remember { mutableStateOf(TextFieldValue(tag.label)) }
     var error: String? by remember { mutableStateOf(null) }
     var pickedColor: Color by remember {
-        mutableStateOf(tag.color)
+        mutableStateOf(tag.getColor())
     }
 
     BottomSheet(
@@ -33,7 +34,9 @@ fun EditTagBottomSheet(
         onConfirm = {
             if (labelValue.text != "") {
                 error = null
-                onConfirm(tag.copy(label = labelValue.text, color = pickedColor))
+                onConfirm(
+                    tag.copy(label = labelValue.text, color = pickedColor)
+                )
                 it()
             } else {
                 error = "Label can't be empty"

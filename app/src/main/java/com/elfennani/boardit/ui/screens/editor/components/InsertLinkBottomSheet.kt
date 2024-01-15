@@ -1,13 +1,11 @@
 package com.elfennani.boardit.ui.screens.editor.components
 
 import android.util.Patterns
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import com.elfennani.boardit.ui.components.BottomSheet
 import com.elfennani.boardit.ui.components.InputField

@@ -1,126 +1,67 @@
 package com.elfennani.boardit.data.repository
 
+import android.util.Log
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import com.elfennani.boardit.data.local.dao.BoardTagsDao
-import com.elfennani.boardit.data.local.dao.TagDao
-import com.elfennani.boardit.data.local.entities.TagEntity
-import com.elfennani.boardit.data.local.entities.asExternalModel
+import com.elfennani.boardit.data.local.models.SerializableTag
+import com.elfennani.boardit.data.local.models.asExternalModel
 import com.elfennani.boardit.data.models.Tag
-import com.elfennani.boardit.data.remote.models.NetworkBoardTags
-import com.elfennani.boardit.data.remote.models.NetworkCategory
-import com.elfennani.boardit.data.remote.models.NetworkTag
-import com.elfennani.boardit.data.remote.models.asEntity
-import com.elfennani.boardit.data.remote.models.combineIds
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.postgrest.from
+import com.elfennani.boardit.data.models.serialize
+import com.tencent.mmkv.MMKV
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
-
-@Serializable
-private data class TagInsert(
-    val label: String,
-    val color: String,
-    @SerialName("user_id") val userId: String
-)
-
 
 interface TagRepository {
     val tags: Flow<List<Tag>>
-    val tableName: String
-        get() = "tag"
 
-    suspend fun synchronize()
-    suspend fun add(label: String, color: Color)
-    suspend fun edit(tag: Tag)
-    suspend fun delete(tag: Tag)
+    fun synchronize()
+    fun add(label: String, color: Color)
+    fun edit(tag: Tag)
+    fun delete(tag: Tag)
 }
 
 class TagRepositoryImpl @Inject constructor(
-    private val tagDao: TagDao,
-    private val boardTagsDao: BoardTagsDao,
-    private val supabaseClient: SupabaseClient
+    private val mmkv: MMKV
 ) : TagRepository {
+
+    private val _tags = MutableStateFlow(getTags())
+
+    private fun getTags(): List<SerializableTag> {
+        val tagKeys = mmkv
+            .allKeys()
+            ?.toList()
+            ?.filter { it.startsWith("tag:") }
+            ?: return emptyList()
+
+        return tagKeys.mapNotNull {
+            val tag = mmkv.decodeString(it) ?: return@mapNotNull null
+            Json.decodeFromString(tag)
+        }
+    }
+
     override val tags: Flow<List<Tag>>
-        get() = tagDao.getAll().map { it.map(TagEntity::asExternalModel) }
+        get() = _tags.map { it.map { tag -> tag.asExternalModel() } }
 
-    override suspend fun synchronize() {
-        val currentUser = supabaseClient.auth.currentUserOrNull() ?: return
-        val networkTags: List<NetworkTag> = supabaseClient.from(tableName)
-            .select {
-                filter {
-                    NetworkTag::userId eq currentUser.id
-                }
-            }.decodeList()
-
-        val boardTagsNetwork: List<NetworkBoardTags> = supabaseClient
-            .from("board_tags")
-            .select {
-                filter {
-                    NetworkTag::userId eq currentUser.id
-                }
-            }.decodeList()
-
-        tagDao.deleteNotExisting(networkTags.map { it.id })
-        tagDao.upsertBatchTag(
-            networkTags
-                .map(NetworkTag::asEntity)
-        )
-        boardTagsDao.deleteNotExist(boardTagsNetwork.map(NetworkBoardTags::combineIds))
-        boardTagsDao.upsertBatchBoardTags(boardTagsNetwork.map(NetworkBoardTags::asEntity))
+    override fun synchronize() {
+        _tags.value = getTags()
+        Log.d("TAGS", getTags().toString())
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
-    private fun Color.toHex() = this.toArgb()
-        .toHexString(HexFormat.UpperCase)
-        .replaceFirst("FF", "#")
+    override fun add(label: String, color: Color) {
+        val tag = Tag(label = label, color = color)
+        edit(tag)
+    }
 
-    override suspend fun add(label: String, color: Color) {
-        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
-        supabaseClient
-            .from(tableName)
-            .insert(
-                TagInsert(
-                    label,
-                    color.toHex(),
-                    currentUser.id
-                )
-            )
+    override fun edit(tag: Tag) {
+        mmkv.encode("tag:${tag.id}", Json.encodeToString(tag.serialize()))
         synchronize()
     }
 
-    override suspend fun edit(tag: Tag) {
-        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
-        supabaseClient
-            .from(tableName)
-            .update({
-                NetworkTag::label setTo tag.label
-                NetworkTag::color setTo tag.color.toHex()
-            }) {
-                filter {
-                    NetworkTag::id eq tag.id
-                    NetworkTag::userId eq currentUser.id
-                }
-            }
-
-        synchronize()
-    }
-
-    override suspend fun delete(tag: Tag) {
-        val currentUser = checkNotNull(supabaseClient.auth.currentUserOrNull())
-        supabaseClient
-            .from(tableName)
-            .delete {
-                filter {
-                    NetworkTag::id eq tag.id
-                    NetworkTag::userId eq currentUser.id
-                }
-            }
-
+    override fun delete(tag: Tag) {
+        mmkv.remove("tag:${tag.id}")
         synchronize()
     }
 }

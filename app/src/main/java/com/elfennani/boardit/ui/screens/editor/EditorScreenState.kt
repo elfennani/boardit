@@ -3,7 +3,6 @@ package com.elfennani.boardit.ui.screens.editor
 import androidx.compose.ui.text.input.TextFieldValue
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.Category
-import com.elfennani.boardit.data.models.EditorAttachment
 import com.elfennani.boardit.data.models.Tag
 
 enum class ModalState {
@@ -17,7 +16,7 @@ data class EditorScreenState(
     val selectedTags: Set<Tag> = emptySet(),
     val categories: List<Category> = emptyList(),
     val tags: List<Tag> = emptyList(),
-    val attachments: List<EditorAttachment> = emptyList(),
+    val attachments: List<Attachment> = emptyList(),
     val modalState: ModalState = ModalState.CLOSED,
     val isDone: Boolean = false,
     val isSaving: Boolean = false,

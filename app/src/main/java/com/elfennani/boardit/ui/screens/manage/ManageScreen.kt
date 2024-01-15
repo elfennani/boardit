@@ -1,5 +1,8 @@
 package com.elfennani.boardit.ui.screens.manage
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -32,9 +35,10 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
+import com.elfennani.boardit.data.models.getColor
+import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.components.IndentationType
 import com.elfennani.boardit.ui.components.SidebarItem
-import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.screens.manage.components.AddButton
 import com.elfennani.boardit.ui.screens.manage.components.AddCategoryBottomSheet
 import com.elfennani.boardit.ui.screens.manage.components.AddTagBottomSheet
@@ -121,7 +125,7 @@ fun ManageScreen(
             state.tags?.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,
-                    color = tag.color,
+                    color = tag.getColor(),
                     indentationType = if (index == state.tags.size - 1) IndentationType.End else IndentationType.Middle,
                     onClick = { modalState = ModalState.EditTag(tag) }
                 )
@@ -171,7 +175,21 @@ fun ManageScreen(
 
 const val ManageScreenPattern = "boards/manage";
 fun NavGraphBuilder.manageScreen(navController: NavController) {
-    composable(ManageScreenPattern) {
+    composable(
+        ManageScreenPattern,
+        enterTransition = {
+            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        popExitTransition = {
+            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        },
+        exitTransition = {
+            fadeOut() + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        popEnterTransition = {
+            fadeIn() + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        }
+    ) {
         val viewModel: ManageViewModel = hiltViewModel()
         val state by viewModel.manageScreenState.collectAsState()
 

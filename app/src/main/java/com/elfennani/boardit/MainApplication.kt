@@ -5,8 +5,8 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.tencent.mmkv.MMKV
 import dagger.hilt.android.HiltAndroidApp
-import javax.inject.Inject
 
 @HiltAndroidApp
 class MainApplication : Application(), ImageLoaderFactory {
@@ -25,4 +25,10 @@ class MainApplication : Application(), ImageLoaderFactory {
                 .build()
         }
         .build()
+
+    override fun onCreate() {
+        super.onCreate()
+
+        MMKV.initialize(this)
+    }
 }

@@ -29,7 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,26 +37,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.core.content.FileProvider
 import androidx.core.os.bundleOf
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.elfennani.boardit.data.local.entities.CachedAttachmentEntity
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.AttachmentType
-
-private fun Attachment.getUrl(cached: List<CachedAttachmentEntity>): String {
-    val cachedUrl = cached.firstOrNull { it.url == this.url }
-
-    return cachedUrl?.uri?.toString() ?: this.url
-}
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BoardAttachments(
     attachments: List<Attachment>,
-    currentlyDownloading: List<Attachment>,
-    cached: List<CachedAttachmentEntity>,
-    onRequestAttachment: (Attachment) -> Unit
 ) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(
@@ -65,14 +56,22 @@ fun BoardAttachments(
         initialPageOffsetFraction = 0f
     ) { attachments.size }
 
+    Log.d("ATTACHMENTS", attachments.toString())
+
     val aspectRatio =
         attachments.filter { it.type is AttachmentType.Image }
             .maxOfOrNull { (it.type as AttachmentType.Image).width.toFloat() / it.type.height.toFloat() }
             ?: (16f / 9)
 
-    val openPdf: (String) -> Unit = {
-        val newIntent = Intent(Intent.ACTION_VIEW)
-        newIntent.data = Uri.parse(it)
+    val openFile: (String) -> Unit = {
+        val newIntent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
+        newIntent.setDataAndType(
+            FileProvider.getUriForFile(
+                context,
+                context.packageName + ".provider",
+                File(it)
+            ), "application/pdf"
+        )
         newIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         newIntent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
         try {
@@ -92,21 +91,11 @@ fun BoardAttachments(
         HorizontalPager(state = pagerState) { index ->
             val attachment = attachments[index]
 
-            LaunchedEffect(key1 = null) {
-                if (
-                    cached.firstOrNull { it.url == attachment.url } == null &&
-                    !currentlyDownloading.contains(attachment) &&
-                    attachment.type !is AttachmentType.Link
-                ) {
-                    onRequestAttachment(attachment)
-                }
-            }
-
             when (attachment.type) {
                 is AttachmentType.Image -> {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(attachment.getUrl(cached))
+                            .data(attachment.url)
                             .build(),
                         contentDescription = null,
                         modifier = Modifier.aspectRatio(aspectRatio),
@@ -122,7 +111,7 @@ fun BoardAttachments(
                     ) {
                         Icon(imageVector = Icons.Rounded.PictureAsPdf, contentDescription = null)
                         Button(onClick = {
-                            openPdf(attachment.getUrl(cached))
+                            openFile(attachment.url)
                         }) {
                             Text(text = "Open")
                         }
@@ -137,12 +126,11 @@ fun BoardAttachments(
                     ) {
                         Icon(imageVector = Icons.Rounded.Link, contentDescription = null)
                         Button(onClick = {
-                            openPdf(attachment.url)
+                            openFile(attachment.url)
                         }) {
                             Text(text = "Open Link")
                         }
                     }
-
                 }
 
                 else -> {}

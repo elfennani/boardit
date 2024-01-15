@@ -27,7 +27,6 @@ import com.elfennani.boardit.ui.screens.home.components.BoardItem
 import com.elfennani.boardit.ui.screens.home.components.HomeScaffold
 import com.elfennani.boardit.ui.screens.home.components.Sidebar
 import com.elfennani.boardit.ui.screens.manage.navigateToManageScreen
-import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +81,7 @@ fun HomeScreen(
 
 
 const val HomeScreenPattern = "boards/home"
-fun NavGraphBuilder.homeScreen(supabaseClient: SupabaseClient, navController: NavController) {
+fun NavGraphBuilder.homeScreen( navController: NavController) {
 
     composable(
         HomeScreenPattern,
@@ -111,12 +110,7 @@ fun NavGraphBuilder.homeScreen(supabaseClient: SupabaseClient, navController: Na
 fun NavController.navigateToHomeScreen(popUpToTop: Boolean = false) {
     this.navigate(HomeScreenPattern) {
         if (popUpToTop) {
-            popUpTo(
-                this@navigateToHomeScreen.currentBackStackEntry?.destination?.route
-                    ?: return@navigate
-            ) {
-                inclusive = true
-            }
+            popUpTo(graph.id)
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.elfennani.boardit.ui.screens.home
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elfennani.boardit.data.models.Category
@@ -12,79 +11,54 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.forEach
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    boardRepository: BoardRepository,
     private val categoryRepository: CategoryRepository,
-    private val tagRepository: TagRepository,
-    private val boardRepository: BoardRepository
+    private val tagRepository: TagRepository
 ) : ViewModel() {
-    private val _categories = categoryRepository.categories
-    private val _tags = tagRepository.tags
     private val _boards = boardRepository.boards
+    private val _categories = categoryRepository.categories
+    private val _selected = categoryRepository.selectedCategory
+    private val _tags = tagRepository.tags
 
     val homeScreenState: StateFlow<HomeScreenState> =
-        combine(
-            _categories,
-            _tags,
-            _boards,
-            categoryRepository.selectedCategory
-        ) { categories, tags, boards, selectedCategory ->
+        combine(_boards, _categories, _selected, _tags) { boards, categories, selected, tags ->
+            val currentCategory = when(selected){
+                null -> SelectedCategory.All
+                else -> SelectedCategory.Id(selected.id)
+            }
+            val filteredBoards = when(currentCategory){
+                is SelectedCategory.Id -> boards.filter { currentCategory.id == it.category?.id }
+                else -> boards
+            }
+
             HomeScreenState(
                 isLoadingCategories = false,
                 categories = categories,
                 isLoadingTags = false,
                 tags = tags,
-                currentCategory = if (selectedCategory == null) SelectedCategory.All else SelectedCategory.Id(
-                    selectedCategory
-                ),
-                boards = boards.filter { selectedCategory == null || (selectedCategory == it.category.id) }
+                currentCategory = currentCategory,
+                boards = filteredBoards
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HomeScreenState(
                 isLoadingCategories = true,
-                categories = runBlocking { categoryRepository.categories.firstOrNull() },
+                categories = emptyList(),
                 isLoadingTags = true,
-                tags = null,
-                currentCategory = runBlocking {
-                    val selectedCategory = categoryRepository.selectedCategory.firstOrNull()
-                    if (selectedCategory != null) SelectedCategory.Id(selectedCategory)
-                    else SelectedCategory.All
-                },
-                boards = null
+                tags = emptyList(),
+                currentCategory = SelectedCategory.All,
+                boards = runBlocking { boardRepository.boards.first() }
             )
         )
 
-
-    fun selectCategory(category: Category?) {
-        viewModelScope.launch {
-            categoryRepository.setSelectedCategory(category)
-        }
-    }
-
-    init {
-        viewModelScope.launch {
-            try {
-                categoryRepository.synchronize()
-            } catch (_: Exception) {
-            }
-            try {
-                tagRepository.synchronize()
-            } catch (_: Exception) {
-            }
-            try {
-                boardRepository.synchronize()
-            } catch (_: Exception) {
-            }
-        }
+    fun selectCategory(category: Category?){
+        categoryRepository.setSelectedCategory(category)
     }
 }
