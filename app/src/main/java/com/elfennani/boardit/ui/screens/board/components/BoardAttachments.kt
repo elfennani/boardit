@@ -33,10 +33,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -47,6 +50,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.AttachmentType
+import com.elfennani.boardit.data.models.LinkMetadata
 import com.elfennani.boardit.ui.screens.board.BoardScreenState
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
@@ -56,7 +60,7 @@ import java.io.File
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BoardAttachments(
-    attachments: List<Attachment>,
+    attachments: List<Pair<Attachment, LinkMetadata?>>,
     onDialogState: (BoardScreenState.DialogState) -> Unit,
     dialogState: BoardScreenState.DialogState,
 ) {
@@ -71,14 +75,14 @@ fun BoardAttachments(
             onDismissRequest = { onDialogState(BoardScreenState.DialogState.Closed) },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            val imageAttachments = attachments.filter { it.type is AttachmentType.Image }
+            val imageAttachments = attachments.filter { it.first.type is AttachmentType.Image }
             val dialogPagerState = rememberPagerState(
                 initialPage = imageAttachments.indexOf(attachments[dialogState.initialIndex]),
                 initialPageOffsetFraction = 0f
             ) { imageAttachments.size }
 
             HorizontalPager(state = dialogPagerState, modifier = Modifier.fillMaxSize()) {
-                val attachment = imageAttachments[it]
+                val attachment = imageAttachments[it].first
 
                 if (attachment.type is AttachmentType.Image)
                     AsyncImage(
@@ -102,10 +106,11 @@ fun BoardAttachments(
         }
     }
 
-    val aspectRatio =
-        attachments.filter { it.type is AttachmentType.Image }
-            .maxOfOrNull { (it.type as AttachmentType.Image).width.toFloat() / it.type.height.toFloat() }
-            ?: (16f / 9)
+//    val aspectRatio =
+//        attachments.filter { it.first.type is AttachmentType.Image }
+//            .maxOfOrNull { (it.first.type as AttachmentType.Image).width.toFloat() / (it.first.type as AttachmentType.Image).height.toFloat() }
+//            ?: (16f / 9)
+    val aspectRatio = 16f/9
 
     val openFile: (String) -> Unit = {
         val newIntent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
@@ -140,7 +145,8 @@ fun BoardAttachments(
         HorizontalPager(
             state = pagerState,
         ) { index ->
-            val attachment = attachments[index]
+            val attachment = attachments[index].first
+            val metadata = attachments[index].second
 
             when (attachment.type) {
                 is AttachmentType.Image -> {
@@ -172,16 +178,58 @@ fun BoardAttachments(
                 }
 
                 is AttachmentType.Link -> {
-                    Column(
+                    Box(
                         Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Rounded.Link, contentDescription = null)
-                        Button(onClick = {
-                            openLink(attachment.url)
-                        }) {
-                            Text(text = "Open Link")
+                        AsyncImage(
+                            model = metadata?.thumbnailUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .padding(bottom = 24.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .shadow(8.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.background)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Link,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                                Column {
+                                    Text(
+                                        text = metadata?.title ?: attachment.url,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    if(!metadata?.title.isNullOrBlank()) Text(
+                                        text = attachment.url,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+                            }
                         }
                     }
                 }

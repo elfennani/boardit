@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.elfennani.boardit.data.models.AttachmentType
 import com.elfennani.boardit.data.models.Board
 import com.elfennani.boardit.data.models.Category
 import com.elfennani.boardit.data.models.Tag
@@ -56,33 +59,46 @@ fun BoardItem(
             .fillMaxWidth()
             .clickable { onClick(board) }
             .padding(12.dp)
-            .height(IntrinsicSize.Min)
-        ,
+            .height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (board.attachments.isNotEmpty()) {
-            AsyncImage(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-//                model = board.attachments[0].url,
-                model = ImageRequest.Builder(context)
-                    .data(board.attachments[0].url)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center
+        ) {
+            when (board.attachments.getOrNull(0)?.type) {
+                is AttachmentType.Image -> AsyncImage(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+
+                    model = ImageRequest.Builder(context)
+                        .data(board.attachments[0].url)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop
+                )
+
+                is AttachmentType.Pdf -> Icon(
+                    imageVector = Icons.Rounded.PictureAsPdf,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(32.dp)
+                )
+
+                is AttachmentType.Link -> Icon(
+                    imageVector = Icons.Rounded.Link,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(32.dp)
+                )
+
+                else -> Icon(
                     imageVector = Icons.Rounded.Image,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.outline,

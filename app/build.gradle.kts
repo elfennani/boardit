@@ -79,6 +79,9 @@ android {
 
 dependencies {
 
+    // Jsoup
+    implementation("org.jsoup:jsoup:1.17.2")
+
     // Zoomable
     implementation("net.engawapg.lib:zoomable:1.5.3")
 

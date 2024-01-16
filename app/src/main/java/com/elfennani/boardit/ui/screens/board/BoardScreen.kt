@@ -62,8 +62,15 @@ fun BoardScreen(
         if (board != null) {
             if (board.attachments.isNotEmpty()) {
                 BoardAttachments(
-                    attachments = board.attachments,
-                    onDialogState= onDialogState,
+                    attachments = board.attachments.map {
+                        Pair(
+                            it,
+                            state.linksMetadata.find { m ->
+                                m.attachmentId == it.id
+                            }
+                        )
+                    },
+                    onDialogState = onDialogState,
                     dialogState = state.dialogState
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -80,7 +87,7 @@ fun BoardScreen(
                     tint = MaterialTheme.colorScheme.tertiary
                 )
                 Text(
-                    text = board.category?.label  ?: "Nothing?",
+                    text = board.category?.label ?: "Nothing?",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
