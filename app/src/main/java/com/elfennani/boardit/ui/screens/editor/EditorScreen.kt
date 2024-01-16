@@ -293,7 +293,7 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
                 EditorScreenEvent.PickImages(it, context)
             )
         }
-        Log.d("RECEIVEDINTENT",navController.currentBackStackEntry?.arguments.toString())
+        Log.d("RECEIVEDINTENT", navController.currentBackStackEntry?.arguments.toString())
 
         val pickPdf =
             rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
@@ -305,7 +305,7 @@ fun NavGraphBuilder.editorScreen(navController: NavController) {
             onEvent = viewModel::event,
             onMedia = pickImages::launch,
             onPdf = { pickPdf.launch(arrayOf("application/pdf")) },
-            onBack = navController::popBackStack,
+            onBack = { if (!navController.popBackStack()) navController.navigateToHomeScreen(true) },
             onNavigateToHome = {
                 navController.navigateToHomeScreen(true)
             }

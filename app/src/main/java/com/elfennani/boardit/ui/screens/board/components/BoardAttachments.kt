@@ -179,7 +179,7 @@ fun BoardAttachments(
 
                 is AttachmentType.Link -> {
                     Box(
-                        Modifier.fillMaxSize(),
+                        Modifier.fillMaxSize().clickable { openLink(attachment.url) },
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
@@ -195,7 +195,7 @@ fun BoardAttachments(
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .padding(bottom = 24.dp)
+                                .padding(bottom = if(attachments.size > 1) 24.dp else 0.dp)
                         ) {
                             Row(
                                 modifier = Modifier
