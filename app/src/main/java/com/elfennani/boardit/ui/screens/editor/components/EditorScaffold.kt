@@ -22,6 +22,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -63,7 +64,7 @@ fun EditorScaffold(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = if(disabled) ({}) else onSave,
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = Color.Black
             ) {
                 Icon(imageVector = Icons.Rounded.Save, contentDescription = null)
                 Spacer(modifier = Modifier.width(12.dp))

@@ -52,7 +52,7 @@ fun BoardItem(
     Row(
         modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .fillMaxWidth()
             .clickable { onClick(board) }
             .padding(12.dp)

@@ -79,6 +79,9 @@ android {
 
 dependencies {
 
+    // Zoomable
+    implementation("net.engawapg.lib:zoomable:1.5.3")
+
     // MMKV
     implementation("com.tencent:mmkv:1.3.2")
 

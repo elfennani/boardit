@@ -59,9 +59,7 @@ fun Sidebar(
             Spacer(modifier = Modifier.height(4.dp))
             DashedDivider()
             Spacer(modifier = Modifier.height(16.dp))
-            SidebarItem(label = "Categories", icon = Icons.Rounded.FolderCopy, leading = {
-                Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = null)
-            })
+            SidebarItem(label = "Categories", icon = Icons.Rounded.FolderCopy,)
             SidebarItem(
                 label = "All",
                 indentationType = IndentationType.Middle,
@@ -79,9 +77,7 @@ fun Sidebar(
             Spacer(modifier = Modifier.height(16.dp))
             DashedDivider()
             Spacer(modifier = Modifier.height(16.dp))
-            SidebarItem(label = "Tags", icon = Icons.Rounded.Tag, leading = {
-                Icon(imageVector = Icons.Rounded.ArrowDropDown, contentDescription = null)
-            })
+            SidebarItem(label = "Tags", icon = Icons.Rounded.Tag, )
             tags.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,

@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,10 +33,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat.startActivity
 import androidx.core.content.FileProvider
 import androidx.core.os.bundleOf
@@ -43,12 +47,18 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.AttachmentType
+import com.elfennani.boardit.ui.screens.board.BoardScreenState
+import net.engawapg.lib.zoomable.rememberZoomState
+import net.engawapg.lib.zoomable.zoomable
 import java.io.File
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BoardAttachments(
     attachments: List<Attachment>,
+    onDialogState: (BoardScreenState.DialogState) -> Unit,
+    dialogState: BoardScreenState.DialogState,
 ) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(
@@ -56,7 +66,41 @@ fun BoardAttachments(
         initialPageOffsetFraction = 0f
     ) { attachments.size }
 
-    Log.d("ATTACHMENTS", attachments.toString())
+    if (dialogState is BoardScreenState.DialogState.Open) {
+        Dialog(
+            onDismissRequest = { onDialogState(BoardScreenState.DialogState.Closed) },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            val imageAttachments = attachments.filter { it.type is AttachmentType.Image }
+            val dialogPagerState = rememberPagerState(
+                initialPage = imageAttachments.indexOf(attachments[dialogState.initialIndex]),
+                initialPageOffsetFraction = 0f
+            ) { imageAttachments.size }
+
+            HorizontalPager(state = dialogPagerState, modifier = Modifier.fillMaxSize()) {
+                val attachment = imageAttachments[it]
+
+                if (attachment.type is AttachmentType.Image)
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(attachment.url)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .zoomable(
+                                rememberZoomState(
+                                    contentSize = Size(
+                                        attachment.type.width.toFloat(),
+                                        attachment.type.height.toFloat()
+                                    )
+                                )
+                            )
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+            }
+        }
+    }
 
     val aspectRatio =
         attachments.filter { it.type is AttachmentType.Image }
@@ -81,6 +125,11 @@ fun BoardAttachments(
         }
     }
 
+    val openLink: (String) -> Unit = {
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(it))
+        startActivity(context, browserIntent, bundleOf())
+    }
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -88,7 +137,9 @@ fun BoardAttachments(
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
     ) {
-        HorizontalPager(state = pagerState) { index ->
+        HorizontalPager(
+            state = pagerState,
+        ) { index ->
             val attachment = attachments[index]
 
             when (attachment.type) {
@@ -98,7 +149,9 @@ fun BoardAttachments(
                             .data(attachment.url)
                             .build(),
                         contentDescription = null,
-                        modifier = Modifier.aspectRatio(aspectRatio),
+                        modifier = Modifier
+                            .clickable { onDialogState(BoardScreenState.DialogState.Open(index)) }
+                            .aspectRatio(aspectRatio),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -126,7 +179,7 @@ fun BoardAttachments(
                     ) {
                         Icon(imageVector = Icons.Rounded.Link, contentDescription = null)
                         Button(onClick = {
-                            openFile(attachment.url)
+                            openLink(attachment.url)
                         }) {
                             Text(text = "Open Link")
                         }

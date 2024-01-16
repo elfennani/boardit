@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,6 +54,7 @@ import com.elfennani.boardit.data.models.Tag
 import com.elfennani.boardit.plus
 import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.components.SelectTagsBottomSheet
+import com.elfennani.boardit.ui.components.TagCard
 import com.elfennani.boardit.ui.screens.board.navigateToBoardScreen
 import com.elfennani.boardit.ui.screens.editor.navigateToEditorScreen
 import com.elfennani.boardit.ui.screens.home.components.BoardItem
@@ -60,7 +63,7 @@ import com.elfennani.boardit.ui.screens.home.components.Sidebar
 import com.elfennani.boardit.ui.screens.manage.navigateToManageScreen
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     state: HomeScreenState,
@@ -154,6 +157,8 @@ fun HomeScreen(
                 }
             }
         ) {
+
+
             LazyColumn(
                 contentPadding = it + PaddingValues(
                     horizontal = 16.dp,
@@ -163,6 +168,20 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize()
 
             ) {
+                if (state.filteredTags.isNotEmpty())
+                    stickyHeader {
+                        FlowRow(
+                            modifier = Modifier
+                                .padding(bottom = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            state.filteredTags.forEach { tag ->
+                                TagCard(tag = tag, onClick = { onSelectTag(tag) })
+                            }
+                        }
+                    }
+
                 items(state.boards, key = { board -> board.id }) { board ->
                     BoardItem(
                         modifier = Modifier.animateItemPlacement(),

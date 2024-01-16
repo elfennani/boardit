@@ -4,12 +4,17 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Parcelable
+import android.os.PatternMatcher
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.service.autofill.RegexValidator
 import android.util.Log
+import android.util.Patterns
 import android.webkit.MimeTypeMap
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.core.database.getIntOrNull
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,8 +40,8 @@ import javax.inject.Inject
 @HiltViewModel
 class EditorViewModel @SuppressLint("StaticFieldLeak")
 @Inject constructor(
-    private val categoryRepository: CategoryRepository,
-    private val tagRepository: TagRepository,
+    categoryRepository: CategoryRepository,
+    tagRepository: TagRepository,
     private val boardRepository: BoardRepository,
     private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val applicationContext: Context
@@ -68,31 +73,49 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
             )
 
         val intent = savedStateHandle.get<Intent>(NavController.KEY_DEEP_LINK_INTENT)
+
+        if (intent?.action !== Intent.ACTION_SEND && intent?.action !== Intent.ACTION_SEND) {
+            return EditorScreenState()
+        }
+
+        val initialState = EditorScreenState(
+            bodyTextFieldValue = TextFieldValue(intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""),
+            attachments = intent.getStringExtra(Intent.EXTRA_TEXT)?.extractLinks() ?: emptyList()
+        )
+
         return when {
-            intent?.action == Intent.ACTION_SEND && intent.type == "text/plain" ->
-                EditorScreenState(
-                    bodyTextFieldValue = TextFieldValue(
-                        intent.getStringExtra(
-                            Intent.EXTRA_TEXT
-                        ) ?: ""
-                    )
+            intent.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true ->
+                initialState.copy(
+                    attachments = initialState.attachments + listOf(
+                        intent.getParcelableExtra<Parcelable>(
+                            Intent.EXTRA_STREAM
+                        ) as Uri
+                    ).toAttachmentsImages()
                 )
 
-            intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true ->
-                EditorScreenState(
-                    attachments = listOf(intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as Uri).toAttachmentsImages()
-                )
-
-            intent?.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true -> {
+            intent.action == Intent.ACTION_SEND_MULTIPLE && intent.type?.startsWith("image/") == true -> {
                 val list = intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)
-                return EditorScreenState(
-                    attachments = list?.map { (it as Uri) }?.toAttachmentsImages()
-                        ?: emptyList()
+                return initialState.copy(
+                    attachments = initialState.attachments + (list?.map { (it as Uri) }
+                        ?.toAttachmentsImages()
+                        ?: emptyList())
                 )
             }
 
-            else -> EditorScreenState()
+            else -> initialState
         }
+    }
+
+    private fun String.extractLinks(): List<Attachment> {
+        val matcher = Patterns.WEB_URL.matcher(this)
+        Log.d("MATCHER", this)
+        val attachments = mutableListOf<Attachment>()
+
+        while (matcher.find()) {
+            val url = matcher.group()
+            attachments.add(Attachment(url = url, fileName = url, type = AttachmentType.Link))
+        }
+        return attachments
     }
 
     private val _state = MutableStateFlow(stateInitialValue)
@@ -202,11 +225,11 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
     private fun Uri.getDimensions(): Pair<Int, Int> {
         val filename = applicationContext.contentResolver.query(this, null, null, null, null)
             .use { cursor ->
-                val widthIndex = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
-                val heightIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
+                val widthIndex = cursor!!.getColumnIndex(MediaStore.Images.Media.WIDTH)
+                val heightIndex = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
                 cursor.moveToFirst()
 
-                Pair(cursor.getInt(widthIndex), cursor.getInt(heightIndex))
+                Pair(cursor.getIntOrNull(widthIndex) ?: 0, cursor.getIntOrNull(heightIndex) ?: 0)
             }
 
         return filename
@@ -257,5 +280,6 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
         }
     }
 }
+
 
 

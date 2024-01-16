@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
@@ -48,6 +49,7 @@ import com.elfennani.boardit.ui.screens.editor.navigateToEditorScreen
 fun BoardScreen(
     state: BoardScreenState,
     onNavigateToEdit: (String) -> Unit,
+    onDialogState: (BoardScreenState.DialogState) -> Unit,
     onBack: () -> Unit
 ) {
     val board = state.board
@@ -61,6 +63,8 @@ fun BoardScreen(
             if (board.attachments.isNotEmpty()) {
                 BoardAttachments(
                     attachments = board.attachments,
+                    onDialogState= onDialogState,
+                    dialogState = state.dialogState
                 )
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -132,7 +136,11 @@ private fun TagCard(tag: Tag) {
     Box(
         Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(tag.getColor().copy(alpha = 0.2f))
+            .background(
+                tag
+                    .getColor()
+                    .copy(alpha = 0.2f)
+            )
             .padding(vertical = 6.dp, horizontal = 12.dp)
     ) {
         Text(
@@ -169,6 +177,7 @@ fun NavGraphBuilder.boardScreen(navController: NavController) {
             onNavigateToEdit = {
                 navController.navigateToEditorScreen(it)
             },
+            onDialogState = boardViewModel::setDialogState,
             onBack = {
                 navController.popBackStack()
             }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,19 +44,9 @@ class HomeViewModel @Inject constructor(
                 null -> SelectedCategory.All
                 else -> SelectedCategory.Id(selected.id)
             }
-//            val filteredBoardsByCategory = when (currentCategory) {
-//                is SelectedCategory.Id -> boards.filter { currentCategory.id == it.category?.id }
-//                else -> boards
-//            }
-//
-//            val filteredBoardsByTagAndCategory = when {
-//                state.filteredTags.isNotEmpty() -> filteredBoardsByCategory.filter {
-//                    it.tags.any { tag -> state.filteredTags.contains(tag) }
-//                }
-//                else -> filteredBoardsByCategory
-//            }
 
             val filteredBoards = boards
+                .sortedBy { it.date.toInstant(ZoneOffset.UTC).epochSecond }
                 .filter { currentCategory !is SelectedCategory.Id || currentCategory.id == it.category?.id }
                 .filter {
                     state.filteredTags.isEmpty() || it.tags.any { tag ->
@@ -79,7 +70,10 @@ class HomeViewModel @Inject constructor(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = HomeScreenState(boards = runBlocking { boardRepository.boards.first() })
+            initialValue = HomeScreenState(boards = runBlocking {
+                boardRepository.boards.first()
+                    .sortedBy { it.date.toInstant(ZoneOffset.UTC).epochSecond }
+            })
         )
 
     fun selectCategory(category: Category?) {
