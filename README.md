@@ -1,3 +1,4 @@
+# BoardIt
 A simple note taking app in form of boards, organized by categories and tags
 
 Note: This project was created to learn Android Development, And I had nothing more than 15 days of learnings when I started this project
