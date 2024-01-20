@@ -23,10 +23,6 @@ operator fun PaddingValues.plus(paddingValues: PaddingValues): PaddingValues {
     )
 }
 
-fun ImageRequest.Builder.storage(url: String, token: String) =
-    this.data(url)
-        .addHeader("Authorization", "Bearer $token")
-        .addHeader("apikey", this.build().context.getString(R.string.SUPABASE_ANON_KEY))
 
 fun LocalDateTime.formatReadable(): String = this.format(
     DateTimeFormatter.ofPattern(
