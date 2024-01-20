@@ -5,6 +5,8 @@ Note: This project was created to learn Android Development, And I had nothing m
 
 The project was planned ahead in Figma: [Figma Design](https://www.figma.com/file/0DD4oZPlBsTaQDvYj54lC8/BoardIt-App-Design?type=design&node-id=12-561&mode=design) (Contains multiple pages)
 
+[A video showcasing the app](https://youtu.be/q1khoaVEiBc?si=13Y8qISl807FakVL)
+
 ## Features
 - Create boards with title and body
 - Embed attachments such as images, links, PDFs
