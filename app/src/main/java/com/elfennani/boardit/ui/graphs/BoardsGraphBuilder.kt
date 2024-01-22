@@ -8,6 +8,7 @@ import com.elfennani.boardit.ui.screens.editor.editorScreen
 import com.elfennani.boardit.ui.screens.home.HomeScreenPattern
 import com.elfennani.boardit.ui.screens.home.homeScreen
 import com.elfennani.boardit.ui.screens.manage.manageScreen
+import com.elfennani.boardit.ui.screens.sync.syncScreen
 
 const val BoardsGraphPattern = "boards"
 fun NavGraphBuilder.boardsGraph(navController: NavController){
@@ -22,5 +23,6 @@ fun NavGraphBuilder.boardsGraph(navController: NavController){
         manageScreen(navController)
         boardScreen(navController)
         editorScreen(navController)
+        syncScreen(navController)
     }
 }

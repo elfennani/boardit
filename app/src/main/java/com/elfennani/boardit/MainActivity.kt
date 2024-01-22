@@ -25,16 +25,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var categoryRepository: CategoryRepository
 
-//    override fun onNewIntent(intent: Intent?) {
-//        super.onNewIntent(intent)
-//
-//        Log.d("RECEIVEDINTENT", intent?.data.toString())
-//
-//        startActivity(Intent(Intent.ACTION_VIEW).apply {
-//            data = Uri.parse("boardit://create")
-//        })
-//    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

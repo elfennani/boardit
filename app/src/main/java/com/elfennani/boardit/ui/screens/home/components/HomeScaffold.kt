@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterAlt
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,6 +46,7 @@ fun HomeScaffold(
     onSearchClick: () -> Unit,
     isSearching: Boolean = false,
     onFilterClick: () -> Unit,
+    onSyncClick: () -> Unit,
     input: @Composable () -> Unit,
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -71,9 +73,11 @@ fun HomeScaffold(
                         )
                 },
                 actions = {
+                    IconButton(onClick = onSyncClick) {
+                        Icon(imageVector = Icons.Rounded.Sync, contentDescription = null)
+                    }
                     IconButton(onClick = onSearchClick) {
                         Icon(imageVector = if(isSearching) Icons.Rounded.Close else Icons.Rounded.Search, contentDescription = null)
-
                     }
                     IconButton(onClick = onFilterClick) {
                         Icon(imageVector = Icons.Rounded.FilterAlt, contentDescription = null)

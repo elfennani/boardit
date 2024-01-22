@@ -77,6 +77,18 @@ dependencies {
     // Credential Manager
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 
+    // Google Drive
+    implementation("com.google.guava:guava:24.1-jre")
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
+    implementation("com.google.api-client:google-api-client-android:1.23.0") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(module= "guava-jdk5")
+    }
+    implementation("com.google.apis:google-api-services-drive:v3-rev136-1.25.0") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(module= "guava-jdk5")
+    }
+
     // Jsoup
     implementation("org.jsoup:jsoup:1.17.2")
 
@@ -99,6 +111,7 @@ dependencies {
     // Dagger Hilt
     implementation("com.google.dagger:hilt-android:2.49")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
     kapt("com.google.dagger:hilt-android-compiler:2.49")
 
     // Compose Navigation

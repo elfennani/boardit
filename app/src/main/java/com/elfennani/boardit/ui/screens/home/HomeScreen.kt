@@ -61,6 +61,7 @@ import com.elfennani.boardit.ui.screens.home.components.BoardItem
 import com.elfennani.boardit.ui.screens.home.components.HomeScaffold
 import com.elfennani.boardit.ui.screens.home.components.Sidebar
 import com.elfennani.boardit.ui.screens.manage.navigateToManageScreen
+import com.elfennani.boardit.ui.screens.sync.navigateToSyncScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
@@ -73,6 +74,7 @@ fun HomeScreen(
     onSelectCategory: (Category?) -> Unit,
     onSearchClick: () -> Unit,
     onFilterClick: () -> Unit,
+    onSyncClick: () -> Unit,
     onCloseModal: () -> Unit,
     onSelectTag: (Tag) -> Unit,
     onSearchValue: (TextFieldValue) -> Unit
@@ -118,6 +120,7 @@ fun HomeScreen(
             onClickAdd = onNavigateToEditor,
             onSearchClick = onSearchClick,
             onFilterClick = onFilterClick,
+            onSyncClick = onSyncClick,
             isSearching = state.isSearching,
             input = {
                 LaunchedEffect(key1 = state.isSearching) {
@@ -222,7 +225,8 @@ fun NavGraphBuilder.homeScreen(navController: NavController) {
             onFilterClick = homeViewModel::openFilterTagsModal,
             onCloseModal = homeViewModel::closeFilterTagsModal,
             onSelectTag = homeViewModel::filterTag,
-            onSearchValue = homeViewModel::setSearchValue
+            onSearchValue = homeViewModel::setSearchValue,
+            onSyncClick = navController::navigateToSyncScreen
         )
     }
 }
