@@ -36,12 +36,7 @@ android {
 
         val properties = Properties()
         properties.load(FileInputStream(project.rootProject.file("local.properties")))
-//        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${properties.getProperty("SUPABASE_ANON_KEY")}\"")
-//        buildConfigField("String", "SUPABASE_SERVER_CLIENT_ID", "\"${properties.getProperty("SUPABASE_SERVER_CLIENT_ID")}\"")
-//        buildConfigField("String", "SUPABASE_URL", "\"${properties.getProperty("SUPABASE_URL")}\"")
-        resValue("string", "SUPABASE_ANON_KEY", properties.getProperty("SUPABASE_ANON_KEY"))
-        resValue("string", "SUPABASE_SERVER_CLIENT_ID", properties.getProperty("SUPABASE_SERVER_CLIENT_ID"))
-        resValue("string", "SUPABASE_URL", properties.getProperty("SUPABASE_URL"))
+        resValue("string", "GOOGLE_CLIENT_ID", properties.getProperty("GOOGLE_CLIENT_ID"))
     }
 
     buildTypes {
@@ -78,6 +73,9 @@ android {
 }
 
 dependencies {
+
+    // Credential Manager
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 
     // Jsoup
     implementation("org.jsoup:jsoup:1.17.2")
