@@ -60,7 +60,7 @@ fun ColumnScope.LoginView(
     )
     Spacer(modifier = Modifier.height(16.dp))
     Text(
-        text = "Sync your mood boards with Google Drive for easy access anytime, anywhere. Your inspirations, always within reach.",
+        text = "Sync your boards with Google Drive for easy access anytime, anywhere. Your inspirations, always within reach.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
         textAlign = TextAlign.Center,
