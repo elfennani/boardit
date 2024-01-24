@@ -39,7 +39,7 @@ import com.elfennani.boardit.data.models.getColor
 import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.components.IndentationType
 import com.elfennani.boardit.ui.components.SidebarItem
-import com.elfennani.boardit.ui.screens.manage.components.AddButton
+import com.elfennani.boardit.ui.screens.manage.components.SmallButton
 import com.elfennani.boardit.ui.screens.manage.components.AddCategoryBottomSheet
 import com.elfennani.boardit.ui.screens.manage.components.AddTagBottomSheet
 import com.elfennani.boardit.ui.screens.manage.components.EditCategoryBottomSheet
@@ -101,7 +101,7 @@ fun ManageScreen(
                 label = "Categories",
                 onClick = null,
                 icon = Icons.Rounded.FolderCopy,
-                leading = { AddButton { modalState = ModalState.AddCategory } })
+                leading = { SmallButton { modalState = ModalState.AddCategory } })
 
             state.categories?.forEachIndexed { index, category ->
                 SidebarItem(
@@ -121,7 +121,7 @@ fun ManageScreen(
                 label = "Tags",
                 onClick = null,
                 icon = Icons.Rounded.Tag,
-                leading = { AddButton { modalState = ModalState.AddTag } })
+                leading = { SmallButton { modalState = ModalState.AddTag } })
             state.tags?.forEachIndexed { index, tag ->
                 SidebarItem(
                     label = tag.label,
