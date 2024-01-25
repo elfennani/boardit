@@ -21,6 +21,7 @@ interface CategoryRepository {
     fun add(label: String)
     fun edit(category: Category)
     fun delete(category: Category)
+    fun getCategories(): List<SerializableCategory>
 }
 
 class CategoryRepositoryImpl @Inject constructor(
@@ -30,7 +31,7 @@ class CategoryRepositoryImpl @Inject constructor(
     private val _selected = MutableStateFlow<Category?>(getSelectedCategory())
     private val _categories = MutableStateFlow(getCategories())
 
-    private fun getCategories(): List<SerializableCategory> = mmkv
+    override fun getCategories(): List<SerializableCategory> = mmkv
         .allKeys()
         ?.toList()
         ?.filter { it.startsWith("category:") }

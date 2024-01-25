@@ -21,6 +21,7 @@ interface TagRepository {
     fun add(label: String, color: Color)
     fun edit(tag: Tag)
     fun delete(tag: Tag)
+    fun getTags(): List<SerializableTag>
 }
 
 class TagRepositoryImpl @Inject constructor(
@@ -29,7 +30,7 @@ class TagRepositoryImpl @Inject constructor(
 
     private val _tags = MutableStateFlow(getTags())
 
-    private fun getTags(): List<SerializableTag> {
+    override fun getTags(): List<SerializableTag> {
         val tagKeys = mmkv
             .allKeys()
             ?.toList()

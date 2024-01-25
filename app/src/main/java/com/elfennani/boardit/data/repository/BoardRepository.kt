@@ -24,9 +24,12 @@ interface BoardRepository {
     val boards: Flow<List<Board>>
     fun insert(board: Board)
 
+    fun getBoards(): List<SerializableBoard>
+
     fun update(board: Board)
 
     fun deleteBoard(board: Board)
+    fun getAttachments(): List<SerializableAttachment>
 }
 
 class BoardRepositoryImpl @Inject constructor(
@@ -38,17 +41,27 @@ class BoardRepositoryImpl @Inject constructor(
     override val boards: Flow<List<Board>>
         get() = _boards.map { it.map { board -> board.asExternalModel(mmkv) } }
 
-    private fun getBoards(): List<SerializableBoard> {
+    override fun getBoards(): List<SerializableBoard> {
         val keys = mmkv.allKeys()?.toList()?.filter { it.startsWith("board:") } ?: emptyList()
         return keys.map { Json.decodeFromString<SerializableBoard>(mmkv.decodeString(it)!!) }
+    }
+
+    override fun getAttachments(): List<SerializableAttachment> {
+        val keys = mmkv.allKeys()?.toList()?.filter { it.startsWith("attachment:") } ?: emptyList()
+        return keys.map { Json.decodeFromString<SerializableAttachment>(mmkv.decodeString(it)!!) }
     }
 
     private fun updateBoards() = run { _boards.value = getBoards() }
 
     override fun deleteBoard(board: Board) {
+        board.attachments.forEach {
+            mmkv.remove("attachment:${it.id}")
+            // TODO: Delete Files from storage
+        }
         mmkv.remove("board:${board.id}")
         updateBoards()
     }
+
 
     override fun insert(board: Board) {
         saveAttachments(board.attachments, board.id)
@@ -77,8 +90,10 @@ class BoardRepositoryImpl @Inject constructor(
                 context.openFileOutput(it.fileName, Context.MODE_PRIVATE).use { stream ->
                     stream.write(bytes)
                 }
+                val file = File(context.filesDir, it.fileName)
+                val extension = if (file.extension.isEmpty()) "" else "." + file.extension
 
-                return@map it.copy(url = File(context.filesDir, it.fileName).path)
+                return@map it.copy(url = file.path, fileName = "${it.id}$extension")
             } else {
                 return@map it
             }

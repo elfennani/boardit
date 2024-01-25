@@ -41,10 +41,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import coil.compose.AsyncImage
+import com.elfennani.boardit.R
 import com.elfennani.boardit.ui.components.DashedDivider
 import com.elfennani.boardit.ui.screens.manage.components.SmallButton
 import com.elfennani.boardit.ui.screens.sync.components.LoginView
@@ -52,6 +54,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
 
@@ -61,6 +64,7 @@ private fun SyncScreen(
     account: GoogleSignInAccount?,
     onLogin: () -> Unit,
     onSignOut: () -> Unit,
+    onSync: () -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -124,7 +128,9 @@ private fun SyncScreen(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        SmallButton(icon = Icons.Rounded.Sync, label = "Sync") {}
+                        SmallButton(icon = Icons.Rounded.Sync, label = "Sync") {
+                            onSync()
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         SmallButton(icon = Icons.Rounded.Logout, label = "Sign out") {
                             onSignOut()
@@ -157,7 +163,7 @@ val Context.googleClient: GoogleSignInClient
             .requestEmail()
             .requestScopes(
                 Scope(DriveScopes.DRIVE_FILE),
-                Scope(DriveScopes.DRIVE)
+                Scope(DriveScopes.DRIVE),
             )
             .build()
 
@@ -168,6 +174,7 @@ const val SyncScreenPattern = "boards/sync"
 fun NavGraphBuilder.syncScreen(navController: NavController) {
     composable(SyncScreenPattern) {
         val context = LocalContext.current
+        val viewModel : SyncViewModel = hiltViewModel()
         var account by remember {
             mutableStateOf(GoogleSignIn.getLastSignedInAccount(context))
         }
@@ -185,6 +192,7 @@ fun NavGraphBuilder.syncScreen(navController: NavController) {
 
         SyncScreen(
             account = account,
+            onSync = viewModel::sync,
             onLogin = { startForResult.launch(context.googleClient.signInIntent) },
             onSignOut = {
                 context.googleClient.signOut().addOnCompleteListener {
