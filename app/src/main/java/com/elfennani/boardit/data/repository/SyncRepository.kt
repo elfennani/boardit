@@ -1,20 +1,20 @@
 package com.elfennani.boardit.data.repository
 
-import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
 import android.util.Log
-import androidx.compose.ui.platform.ClipboardManager
-import androidx.core.content.ContextCompat.getSystemService
 import com.elfennani.boardit.R
 import com.elfennani.boardit.data.local.models.SerializableData
+import com.elfennani.boardit.data.local.models.SerializableDeleted
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.api.client.extensions.android.http.AndroidHttp
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.http.ByteArrayContent
 import com.google.api.client.http.FileContent
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
+import com.tencent.mmkv.MMKV
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -27,6 +27,12 @@ import javax.inject.Inject
 
 interface SyncRepository {
     fun sync()
+    val dataFilename: String
+        get() = "data.json"
+    val onlineData: SerializableData
+    val driveInstance: Drive
+    val data: SerializableData
+    fun updateDataFile(data: SerializableData)
 }
 
 const val initialData = """
@@ -41,73 +47,77 @@ const val initialData = """
 typealias GFile = com.google.api.services.drive.model.File
 
 class SyncRepositoryImpl @Inject constructor(
+    private val mmkv: MMKV,
     private val boardRepository: BoardRepository,
     private val tagRepository: TagRepository,
     private val categoryRepository: CategoryRepository,
     @ApplicationContext private val context: Context
 ) : SyncRepository {
 
-    private val drive = context.driveInstance
-    private val dataFilename = "data.json"
+    private val drive = driveInstance
 
     override fun sync() {
-        val data = Json.encodeToString(combineData())
+        val data = Json.encodeToString(data)
         val clip = ClipData.newPlainText("JSON", data)
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clipboard =
+            context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         clipboard.setPrimaryClip(clip)
-        Log.d("DATAFILE", data)
-//        Log.d("DATAFILE", "Syncing")
-//        Log.d("DATAFILE 2", GoogleSignIn.getLastSignedInAccount(context)?.idToken.toString())
-//        if (GoogleSignIn.getLastSignedInAccount(context) == null) return
-//        getOnlineBoards()
     }
 
-    private fun combineData() = SerializableData(
-        boards = boardRepository.getBoards(),
-        categories = categoryRepository.getCategories(),
-        tags = tagRepository.getTags(),
-        attachments = boardRepository.getAttachments()
-    )
+    override val data
+        get() = SerializableData(
+            boards = boardRepository.getBoards(),
+            categories = categoryRepository.getCategories(),
+            tags = tagRepository.getTags(),
+            attachments = boardRepository.getAttachments(),
+            deleted = SerializableDeleted(
+                boards = boardRepository.deletedBoards,
 
-    private fun getOnlineBoards() {
-        val files = drive.files().list().setSpaces("appDataFolder").execute().files
-        Log.d("DATAFILE files", files.map { it.name }.toString())
-        var dataFile = files.find { it.name == dataFilename }
-        if (dataFile == null) {
-            Log.d("DATAFILE", "Data file not found")
-            createDataFile()
-            dataFile = drive.Files().list().setSpaces("appDataFolder")
-                .execute().files.find { it.name == dataFilename }!!
-        }
+            )
+        )
 
-        val outputStream: OutputStream = ByteArrayOutputStream()
-        drive.Files().get(dataFile.id).executeMediaAndDownloadTo(outputStream)
-        val data = String((outputStream as ByteArrayOutputStream).toByteArray())
-
-        Log.d("DATAFILE", data)
-    }
-
-    private fun createDataFile() {
-        Log.d("DATAFILE", "Creating Data File")
-        val bytes = initialData.trimIndent().toByteArray()
-        context.openFileOutput(dataFilename, Context.MODE_PRIVATE).use { stream ->
-            stream.write(bytes)
-        }
-
-        val file = File(context.filesDir, dataFilename)
-        val gFile = GFile()
-        gFile.setName(dataFilename)
-        gFile.setParents(Collections.singletonList("appDataFolder"));
-        val fileContent = FileContent("application/json", file)
-        drive.files().create(gFile, fileContent).execute()
-        Log.d("DATAFILE", "Data File Created Successfully")
-    }
-
-    private val Context.driveInstance: Drive
+    override val onlineData: SerializableData
         get() {
-            val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+            val files = drive.files().list().setSpaces("appDataFolder").execute().files
+            val dataFile = files.find { it.name == dataFilename } ?: return SerializableData()
+
+            val outputStream: OutputStream = ByteArrayOutputStream()
+            drive.Files().get(dataFile.id).executeMediaAndDownloadTo(outputStream)
+
+            return Json.decodeFromString(String((outputStream as ByteArrayOutputStream).toByteArray()))
+        }
+
+    override fun updateDataFile(data: SerializableData){
+        val id = fileId
+        val file = drive.Files().get(id).execute()
+        val contentStream = ByteArrayContent.fromString("application/json", Json.encodeToString(data))
+
+        drive.Files().update(id, file, contentStream)
+    }
+
+    private val fileId: String
+        get() {
+            if(mmkv.containsKey("data-file-id"))
+                return mmkv.decodeString("data-file-id")!!
+
+            val bytes = initialData.trimIndent().toByteArray()
+            context.openFileOutput(dataFilename, Context.MODE_PRIVATE).use { stream ->
+                stream.write(bytes)
+            }
+
+            val file = File(context.filesDir, dataFilename)
+            val gFile = GFile()
+            gFile.setName(dataFilename)
+            gFile.setParents(Collections.singletonList("appDataFolder"));
+            val fileContent = FileContent("application/json", file)
+            return drive.files().create(gFile, fileContent).setFields("id").execute().id
+        }
+
+    override val driveInstance: Drive
+        get() {
+            val googleAccount = GoogleSignIn.getLastSignedInAccount(context)
             val credential = GoogleAccountCredential.usingOAuth2(
-                this,
+                context,
                 listOf(
                     DriveScopes.DRIVE,
                     DriveScopes.DRIVE_FILE,
@@ -122,7 +132,7 @@ class SyncRepositoryImpl @Inject constructor(
                     JacksonFactory.getDefaultInstance(),
                     credential
                 )
-                .setApplicationName(getString(R.string.app_name))
+                .setApplicationName(context.getString(R.string.app_name))
                 .build()
         }
 }

@@ -8,6 +8,7 @@ import com.elfennani.boardit.data.local.models.SerializableBoard
 import com.elfennani.boardit.data.local.models.asExternalModel
 import com.elfennani.boardit.data.models.Attachment
 import com.elfennani.boardit.data.models.Board
+import com.elfennani.boardit.data.models.MergeChanges
 import com.elfennani.boardit.data.models.serialize
 import com.tencent.mmkv.MMKV
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,6 +23,8 @@ import javax.inject.Inject
 
 interface BoardRepository {
     val boards: Flow<List<Board>>
+    val deletedBoards: List<String>
+    val deletedAttachments: List<String>
     fun insert(board: Board)
 
     fun getBoards(): List<SerializableBoard>
@@ -29,7 +32,9 @@ interface BoardRepository {
     fun update(board: Board)
 
     fun deleteBoard(board: Board)
+    fun deleteBoard(id: String)
     fun getAttachments(): List<SerializableAttachment>
+    fun merge(changes: MergeChanges<SerializableBoard>)
 }
 
 class BoardRepositoryImpl @Inject constructor(
@@ -51,17 +56,45 @@ class BoardRepositoryImpl @Inject constructor(
         return keys.map { Json.decodeFromString<SerializableAttachment>(mmkv.decodeString(it)!!) }
     }
 
+    override val deletedBoards: List<String>
+        get() = mmkv
+            .allKeys()
+            ?.toList()
+            ?.filter { it.startsWith("deleted-board:") }
+            ?.map { mmkv.decodeString(it)!! }
+            ?: emptyList()
+
+    override val deletedAttachments: List<String>
+        get() = mmkv
+            .allKeys()
+            ?.toList()
+            ?.filter { it.startsWith("deleted-attachment:") }
+            ?.map { mmkv.decodeString(it)!! }
+            ?: emptyList()
+
     private fun updateBoards() = run { _boards.value = getBoards() }
 
     override fun deleteBoard(board: Board) {
         board.attachments.forEach {
             mmkv.remove("attachment:${it.id}")
+            mmkv.encode("deleted-attachment:${it.id}", it.id)
             // TODO: Delete Files from storage
         }
         mmkv.remove("board:${board.id}")
+        mmkv.encode("deleted-board:${board.id}", board.id)
         updateBoards()
     }
 
+    override fun deleteBoard(id: String) {
+        val data = mmkv.decodeString("board:$id") ?: return
+        deleteBoard(Json.decodeFromString<SerializableBoard>(data).asExternalModel(mmkv))
+    }
+
+    override fun merge(changes: MergeChanges<SerializableBoard>) {
+        changes.added.forEach {
+            insert(it.asExternalModel(mmkv))
+        }
+    }
 
     override fun insert(board: Board) {
         saveAttachments(board.attachments, board.id)

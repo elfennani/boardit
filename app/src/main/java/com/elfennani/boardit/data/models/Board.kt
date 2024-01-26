@@ -10,7 +10,8 @@ data class Board(
     val title: String,
     val category: Category?,
     val note: String?,
-    val date: LocalDateTime,
+    val created: LocalDateTime = LocalDateTime.now(),
+    val modified: LocalDateTime,
     val tags: List<Tag> = emptyList(),
     val attachments: List<Attachment> = emptyList()
 )
@@ -20,7 +21,8 @@ fun Board.serialize() = SerializableBoard(
     title,
         category = category?.id,
     note,
-    date.format(DateTimeFormatter.ISO_DATE_TIME),
+    created = created.format(DateTimeFormatter.ISO_DATE_TIME),
+    modified = modified.format(DateTimeFormatter.ISO_DATE_TIME),
     attachments = attachments.map { it.id },
     tags = tags.map { it.id }
 )

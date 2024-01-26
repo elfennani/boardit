@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 interface CategoryRepository {
@@ -22,6 +23,7 @@ interface CategoryRepository {
     fun edit(category: Category)
     fun delete(category: Category)
     fun getCategories(): List<SerializableCategory>
+    val deletedCategories: List<String>
 }
 
 class CategoryRepositoryImpl @Inject constructor(
@@ -58,20 +60,31 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override fun add(label: String) {
-        val category = Category(label = label)
+        val category = Category(label = label, modified = LocalDateTime.now())
         mmkv.encode("category:${category.id}", Json.encodeToString(category.serialize()))
         synchronize()
     }
 
     override fun edit(category: Category) {
-        mmkv.encode("category:${category.id}", Json.encodeToString(category.serialize()))
+        val modifiedCategory = category.copy(modified = LocalDateTime.now())
+        mmkv.encode("category:${category.id}", Json.encodeToString(modifiedCategory.serialize()))
         synchronize()
     }
 
     override fun delete(category: Category) {
         mmkv.remove("category:${category.id}")
+        mmkv.encode("deleted-category:${category.id}", category.id)
         synchronize()
     }
+
+    override val deletedCategories: List<String>
+        get() = mmkv
+            .allKeys()
+            ?.toList()
+            ?.filter { it.startsWith("deleted-category:") }
+            ?.map { mmkv.decodeString(it)!! }
+            ?: emptyList()
+
 
     override fun setSelectedCategory(category: Category?) {
         if (category == null)

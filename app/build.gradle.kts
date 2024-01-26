@@ -74,6 +74,9 @@ android {
 
 dependencies {
 
+    // Work Manager
+    val work_version = "2.9.0"
+    implementation("androidx.work:work-runtime-ktx:$work_version")
 
     // Credential Manager
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
@@ -113,6 +116,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.49")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("androidx.hilt:hilt-work:1.0.0")
     kapt("com.google.dagger:hilt-android-compiler:2.49")
 
     // Compose Navigation

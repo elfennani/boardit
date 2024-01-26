@@ -260,7 +260,7 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
                         note = _state.value.bodyTextFieldValue.text,
                         category = _state.value.selectedCategory!!,
                         tags = _state.value.selectedTags.toList(),
-                        date = LocalDateTime.now()
+                        modified = LocalDateTime.now(),
                     )
                 )
             else
@@ -272,7 +272,8 @@ class EditorViewModel @SuppressLint("StaticFieldLeak")
                         note = _state.value.bodyTextFieldValue.text,
                         category = _state.value.selectedCategory!!,
                         tags = _state.value.selectedTags.toList(),
-                        date = LocalDateTime.now()
+                        modified = LocalDateTime.now(),
+                        created = board!!.created
                     )
                 )
 

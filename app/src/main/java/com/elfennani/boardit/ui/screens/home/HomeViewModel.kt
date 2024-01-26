@@ -46,7 +46,7 @@ class HomeViewModel @Inject constructor(
             }
 
             val filteredBoards = boards
-                .sortedBy { it.date.toInstant(ZoneOffset.UTC).epochSecond }
+                .sortedByDescending { it.created.toInstant(ZoneOffset.UTC).epochSecond }
                 .filter { currentCategory !is SelectedCategory.Id || currentCategory.id == it.category?.id }
                 .filter {
                     state.filteredTags.isEmpty() || it.tags.any { tag ->
@@ -72,7 +72,7 @@ class HomeViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HomeScreenState(boards = runBlocking {
                 boardRepository.boards.first()
-                    .sortedBy { it.date.toInstant(ZoneOffset.UTC).epochSecond }
+                    .sortedByDescending { it.created.toInstant(ZoneOffset.UTC).epochSecond }
             })
         )
 

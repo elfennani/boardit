@@ -16,7 +16,8 @@ data class SerializableBoard(
     val title: String,
     val category: String?,
     val note: String?,
-    val date: String,
+    val created: String,
+    val modified: String,
     val tags: List<String>,
     val attachments: List<String>
 )
@@ -46,7 +47,8 @@ fun SerializableBoard.asExternalModel(mmkv: MMKV): Board {
         title,
         category = category,
         note,
-        date = LocalDateTime.parse(date, DateTimeFormatter.ISO_DATE_TIME),
+        created = LocalDateTime.parse(created, DateTimeFormatter.ISO_DATE_TIME),
+        modified = LocalDateTime.parse(modified, DateTimeFormatter.ISO_DATE_TIME),
         tags = tagsModel,
         attachments = attachmentsMapped
     )
